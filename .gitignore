@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Local data directory
+~/.config/workspace/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+frontend/dist/
+backend/dist/

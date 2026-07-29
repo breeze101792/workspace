@@ -1,0 +1,42 @@
+.image-window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.image-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--border);
+}
+
+.image-toolbar-btn {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.image-toolbar-btn:hover {
+  background: var(--bg-glass-hover);
+  color: var(--text);
+}
+
+.image-zoom-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  min-width: 40px;
+  text-align: center;
+}
+
+.image-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.4);
+}

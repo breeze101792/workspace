@@ -1,0 +1,89 @@
+.explorer-window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.explorer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--border);
+}
+
+.explorer-btn {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.explorer-btn:hover {
+  background: var(--bg-glass-hover);
+  color: var(--text);
+}
+
+.explorer-path {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-upload-btn {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.explorer-upload-btn:hover {
+  background: var(--accent-dim);
+}
+
+.explorer-list {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.explorer-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.explorer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.explorer-item:hover {
+  background: var(--accent-dim);
+}
+
+.explorer-item-dir {
+  color: var(--accent);
+}
+
+.explorer-item-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.explorer-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
