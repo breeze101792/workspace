@@ -125,11 +125,11 @@ async function handleMessage(workspaceId, type, data, sender) {
       const wsState = await workspaceManager.getWorkspace(workspaceId);
       const maxZ = Math.max(...wsState.windows.map(w => w.zIndex), 0);
       const newWindow = {
-        id: `wnd_${Math.random().toString(36).slice(2, 10)}`,
+        id: data.id || `wnd_${Math.random().toString(36).slice(2, 10)}`,
         type: data.type,
         title: data.title || '',
-        x: data.x || 100,
-        y: data.y || 100,
+        x: data.x ?? 100,
+        y: data.y ?? 100,
         width: data.width || 600,
         height: data.height || 400,
         zIndex: maxZ + 1,
@@ -139,11 +139,10 @@ async function handleMessage(workspaceId, type, data, sender) {
         filePath: data.file || null,
         metadata: {},
       };
+
       wsState.windows.push(newWindow);
       await workspaceManager.updateWorkspace(workspaceId, { windows: wsState.windows });
-      const addedMsg = { type: 'window:added', workspace: workspaceId, data: newWindow };
-      broadcast(workspaceId, addedMsg, sender);
-      sendTo(sender, addedMsg);
+      broadcast(workspaceId, { type: 'window:added', workspace: workspaceId, data: newWindow }, sender);
       break;
     }
     case 'workspace:updateSettings': {

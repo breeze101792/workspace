@@ -3,6 +3,9 @@ import { useWorkspace } from '../../state/workspaceContext';
 import { useWebSocket } from '../../ws/useWebSocket';
 import { syncEngine } from '../../ws/syncEngine';
 import * as workspaceApi from '../../api/workspace';
+import * as filesApi from '../../api/files';
+import { showToast } from '../common/Toast';
+
 import { Canvas } from './Canvas';
 import { TopBar } from './TopBar';
 import { Dock } from './Dock';
@@ -120,11 +123,52 @@ export function Desktop() {
       image: 'Image Viewer',
       explorer: 'File Explorer',
     };
+
+    const id = `wnd_${Math.random().toString(36).slice(2, 10)}`;
+    const ws = state.workspace;
+    if (!ws) return;
+
+    const maxZ = Math.max(...ws.windows.map(w => w.zIndex), 0);
+    const x = 150 + Math.random() * 100;
+    const y = 150 + Math.random() * 100;
+
+    if (type === 'explorer' || type === 'image') {
+      // Explorer and Image don't need a file
+      dispatch({ type: 'ADD_WINDOW', window: {
+        id, type, title: titles[type] || type, x, y,
+        width: 600, height: 400, zIndex: maxZ + 1,
+        minimized: false, maximized: false,
+        file: null, filePath: null, metadata: {},
+      }});
+      send('window:open', { id, type, title: titles[type] || type, x, y });
+      return;
+    }
+
+    // Create a file for text-based window types
+    const typeMap: Record<string, { ext: string; dir: string; template: string }> = {
+      markdown: { ext: 'md', dir: 'markdown', template: '# Untitled\n\n' },
+      text: { ext: 'txt', dir: 'markdown', template: '' },
+      html: { ext: 'html', dir: 'html', template: '<!DOCTYPE html>\n<html>\n<head><title>Page</title></head>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>\n' },
+    };
+    const cfg = typeMap[type] || { ext: 'txt', dir: 'files', template: '' };
+    const fileName = `untitled.${cfg.ext}`;
+    const filePath = `${cfg.dir}/${fileName}`;
+
+    filesApi.writeFile(ws.id, filePath, cfg.template).then((res) => {
+      if (!res.ok) {
+        showToast('Failed to create file: ' + res.error, 'error');
+      }
+    });
+
+    dispatch({ type: 'ADD_WINDOW', window: {
+      id, type, title: fileName, x, y,
+      width: 600, height: 400, zIndex: maxZ + 1,
+      minimized: false, maximized: false,
+      file: filePath, filePath, metadata: {},
+    }});
+
     send('window:open', {
-      type,
-      title: titles[type] || type,
-      x: 150 + Math.random() * 100,
-      y: 150 + Math.random() * 100,
+      id, type, title: fileName, x, y, file: filePath,
     });
   }
 
