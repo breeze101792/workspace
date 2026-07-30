@@ -61,15 +61,14 @@ export function Window({
       style={style}
       onPointerDown={onFocus}
     >
-      <div {...dragHandlers} style={{ touchAction: 'none' }}>
-        <TitleBar
-          title={win.title}
-          focused={focused}
-          onMinimize={onMinimize}
-          onMaximize={onMaximize}
-          onClose={onClose}
-        />
-      </div>
+      <TitleBar
+        title={win.title}
+        focused={focused}
+        onMinimize={onMinimize}
+        onMaximize={onMaximize}
+        onClose={onClose}
+        dragHandlers={dragHandlers}
+      />
       <div className="window-content">
         {children}
       </div>

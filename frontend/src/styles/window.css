@@ -41,6 +41,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.titlebar-text:active {
+  cursor: grabbing;
 }
 
 .titlebar-buttons {
