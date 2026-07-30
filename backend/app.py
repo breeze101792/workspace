@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import io
 import uuid
 from pathlib import Path
 
@@ -11,6 +12,8 @@ from flask_sock import Sock
 from .safe_fs import ensure_dirs
 from . import workspace_manager as wm
 from . import file_manager as fm
+from . import plugin_loader
+from . import auth
 
 app = Flask(__name__, static_folder=None)
 CORS(app)
@@ -207,10 +210,43 @@ def api_get_workspace(ws_id):
 @app.route('/api/workspaces/<ws_id>', methods=['PUT'])
 def api_update_workspace(ws_id):
     data = request.get_json(silent=True) or {}
+    expected_version = request.headers.get('If-Match')
+    if expected_version is not None:
+        current = wm.get_workspace(ws_id)
+        if current and str(current.get('version', 0)) != str(expected_version):
+            return jsonify({
+                'ok': False,
+                'error': 'Version conflict',
+                'current': current,
+                'expected': expected_version,
+            }), 409
     ws = wm.update_workspace(ws_id, data)
     if not ws:
         return jsonify({'ok': False, 'error': 'Workspace not found'}), 404
-    return jsonify({'ok': True, 'data': {'updatedAt': ws.get('updatedAt', '')}})
+    return jsonify({'ok': True, 'data': {'updatedAt': ws.get('updatedAt', ''), 'version': ws.get('version', 1)}})
+
+
+@app.route('/api/workspaces/<ws_id>/version', methods=['GET'])
+def api_workspace_version(ws_id):
+    ws = wm.get_workspace(ws_id)
+    if not ws:
+        return jsonify({'ok': False, 'error': 'Workspace not found'}), 404
+    return jsonify({'ok': True, 'data': {'version': ws.get('version', 0)}})
+
+
+@app.route('/api/workspaces/<ws_id>/wallpaper', methods=['PUT'])
+def api_set_wallpaper(ws_id):
+    data = request.get_json(silent=True) or {}
+    wallpaper = data.get('wallpaper')
+    current = wm.get_workspace(ws_id)
+    if not current:
+        return jsonify({'ok': False, 'error': 'Workspace not found'}), 404
+    settings = current.get('settings', {})
+    settings['wallpaper'] = wallpaper
+    ws = wm.update_workspace(ws_id, {'settings': settings})
+    if not ws:  # pragma: no cover
+        return jsonify({'ok': False, 'error': 'Workspace not found'}), 404
+    return jsonify({'ok': True, 'data': {'wallpaper': wallpaper}})
 
 
 @app.route('/api/workspaces/<ws_id>', methods=['DELETE'])
@@ -272,6 +308,113 @@ def api_upload(ws_id):
     result = fm.save_upload(ws_id, file.filename, file.read(), subdir)
     _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': result['path'], 'action': 'write'}})
     return jsonify({'ok': True, 'data': result}), 201
+
+
+@app.route('/api/workspaces/<ws_id>/search', methods=['GET'])
+def api_search(ws_id):
+    query = request.args.get('q', '')
+    directory = request.args.get('dir', '')
+    results = fm.search_files(ws_id, query, directory)
+    return jsonify({'ok': True, 'data': results})
+
+
+@app.route('/api/workspaces/<ws_id>/export', methods=['GET'])
+def api_export_workspace(ws_id):
+    data = wm.export_workspace(ws_id)
+    if data is None:
+        return jsonify({'ok': False, 'error': 'Workspace not found'}), 404
+    from flask import send_file as flask_send_file
+    return flask_send_file(
+        io.BytesIO(data),
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'{ws_id}.zip',
+    )
+
+
+@app.route('/api/workspaces/import', methods=['POST'])
+def api_import_workspace():
+    if 'file' not in request.files:
+        return jsonify({'ok': False, 'error': 'No file provided'}), 400
+    file = request.files['file']
+    name = request.form.get('name') or file.filename.rsplit('.', 1)[0]
+    workspace = wm.import_workspace(name, file.read())
+    if not workspace:
+        return jsonify({'ok': False, 'error': 'Invalid zip file'}), 400
+    return jsonify({'ok': True, 'data': {'id': workspace['id'], 'name': workspace['name']}}), 201
+
+
+@app.route('/api/plugins', methods=['GET'])
+def api_list_plugins():
+    return jsonify({'ok': True, 'data': plugin_loader.list_plugins()})
+
+
+@app.route('/api/plugins/<plug_id>', methods=['DELETE'])
+def api_uninstall_plugin(plug_id):
+    if not plugin_loader.uninstall_plugin(plug_id):
+        return jsonify({'ok': False, 'error': 'Plugin not found'}), 404
+    return jsonify({'ok': True, 'data': {'deleted': True}})
+
+
+@app.route('/api/plugins/<plug_id>/load', methods=['POST'])
+def api_load_plugin(plug_id):
+    exports = plugin_loader.load_plugin(plug_id)
+    return jsonify({'ok': True, 'data': exports})
+
+
+@app.route('/api/plugins/load_all', methods=['POST'])
+def api_load_all_plugins():
+    return jsonify({'ok': True, 'data': plugin_loader.load_all_plugins()})
+
+
+# --- Auth ---
+
+@app.route('/api/auth/status', methods=['GET'])
+def api_auth_status():
+    return jsonify({'ok': True, 'data': {'required': auth.is_required()}})
+
+
+@app.route('/api/auth/register', methods=['POST'])
+def api_auth_register():
+    data = request.get_json(silent=True) or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    if not username or not password:
+        return jsonify({'ok': False, 'error': 'username and password required'}), 400
+    try:
+        result = auth.create_user(username, password)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 409
+    return jsonify({'ok': True, 'data': result}), 201
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_auth_login():
+    data = request.get_json(silent=True) or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '')
+    token = auth.authenticate(username, password)
+    if not token:
+        return jsonify({'ok': False, 'error': 'Invalid credentials'}), 401
+    return jsonify({'ok': True, 'data': {'token': token, 'username': username}})
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def api_auth_logout():
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token:
+        return jsonify({'ok': False, 'error': 'No token'}), 400
+    auth.logout(token)
+    return jsonify({'ok': True, 'data': {'loggedOut': True}})
+
+
+@app.route('/api/auth/me', methods=['GET'])
+def api_auth_me():
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    username = auth.verify_token(token)
+    if not username:
+        return jsonify({'ok': False, 'error': 'Invalid token'}), 401
+    return jsonify({'ok': True, 'data': {'username': username}})
 
 
 # --- Error handler ---

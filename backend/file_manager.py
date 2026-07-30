@@ -88,3 +88,37 @@ def save_upload(ws_id: str, filename: str, data: bytes, subdir: str = 'files') -
     resolved.write_bytes(data)
     mime = mimetypes.guess_type(str(resolved))[0] or 'application/octet-stream'
     return {"path": f'{subdir}/{filename}', "size": len(data), "mime": mime}
+
+
+def search_files(ws_id: str, query: str, directory: str = '') -> list[dict]:
+    """Full-text search across text files in the workspace.
+
+    Returns a list of matches with: path, line_number, line, context.
+    """
+    if not query:
+        return []
+    resolved = _resolve_path(ws_id, directory) if directory else safe_fs.workspace_path(ws_id).resolve()
+    if not resolved or not resolved.exists():
+        return []
+    results = []
+    query_lower = query.lower()
+    for entry in sorted(resolved.rglob('*')):
+        if not entry.is_file() or entry.name.startswith('.'):
+            continue
+        if entry.suffix.lower() not in TEXT_EXTENSIONS:
+            continue
+        try:
+            content = entry.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            continue
+        rel = entry.relative_to(safe_fs.workspace_path(ws_id)).as_posix()
+        for i, line in enumerate(content.splitlines(), 1):
+            if query_lower in line.lower():
+                results.append({
+                    'path': rel,
+                    'line': i,
+                    'text': line.strip()[:200],
+                })
+                if len(results) >= 500:
+                    return results
+    return results

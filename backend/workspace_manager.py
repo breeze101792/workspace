@@ -1,5 +1,7 @@
 import uuid
 import shutil
+import zipfile
+import io
 from datetime import datetime, timezone
 from . import safe_fs
 
@@ -47,6 +49,9 @@ def create_workspace(name: str) -> dict:
             "zoom": 1.0,
             "viewportX": 0,
             "viewportY": 0,
+            "snapToGrid": False,
+            "gridSize": 20,
+            "wallpaper": None,
         },
     }
 
@@ -82,6 +87,7 @@ def update_workspace(ws_id: str, data: dict) -> dict | None:
         return None
     ws.update(data)
     ws["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    ws["version"] = ws.get("version", 0) + 1
     safe_fs.atomic_write(safe_fs.json_path(ws_id), ws)
     return ws
 
@@ -92,3 +98,59 @@ def delete_workspace(ws_id: str) -> bool:
         return False
     shutil.rmtree(path)
     return True
+
+
+def export_workspace(ws_id: str) -> bytes | None:
+    """Export a workspace as a zip archive. Returns None if not found."""
+    path = safe_fs.workspace_path(ws_id)
+    if not path.exists():
+        return None
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for entry in sorted(path.rglob('*')):
+            if entry.is_file():
+                arcname = entry.relative_to(path).as_posix()
+                zf.write(entry, arcname)
+    return buf.getvalue()
+
+
+def import_workspace(name: str, zip_data: bytes) -> dict | None:
+    """Import a workspace from a zip archive. Returns the new workspace dict."""
+    safe_fs.ensure_dirs()
+    ws_id = 'ws_' + uuid.uuid4().hex[:8]
+    ws_dir = safe_fs.workspace_path(ws_id)
+    ws_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
+            for name_in_zip in zf.namelist():
+                if name_in_zip.startswith('/') or '..' in name_in_zip:
+                    continue
+                zf.extract(name_in_zip, ws_dir)
+    except zipfile.BadZipFile:
+        shutil.rmtree(ws_dir)
+        return None
+
+    # Ensure all required subdirs exist
+    for sub in ('markdown', 'text', 'html', 'images', 'files', 'cache'):
+        (ws_dir / sub).mkdir(exist_ok=True)
+
+    # Load workspace.json or create a default one
+    json_path = ws_dir / 'workspace.json'
+    if json_path.exists():
+        workspace = safe_fs.atomic_read(json_path)
+        workspace['id'] = ws_id
+        workspace['name'] = name
+    else:
+        now = datetime.now(timezone.utc).isoformat()
+        workspace = {
+            'id': ws_id,
+            'name': name,
+            'createdAt': now,
+            'updatedAt': now,
+            'windows': [],
+            'settings': {'zoom': 1.0, 'viewportX': 0, 'viewportY': 0, 'snapToGrid': False, 'gridSize': 20, 'wallpaper': None},
+        }
+
+    safe_fs.atomic_write(json_path, workspace)
+    return workspace

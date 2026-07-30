@@ -1,5 +1,6 @@
 import { emit } from './state.js';
 import { updateWindowPos, focusWindow } from './window-manager.js';
+import { snapToGrid, snapToOthers } from './snap.js';
 
 export function createTitleBar(win) {
   const el = document.createElement('div');
@@ -30,7 +31,20 @@ export function createTitleBar(win) {
   title.addEventListener('pointerup', () => {
     if (dragging) {
       dragging = false;
-      emit('window:request-move', { id: win.id, x: win.x, y: win.y });
+      let { x, y } = win;
+      // Try snap to other windows first
+      const snap = snapToOthers(x, y);
+      x = snap.x;
+      y = snap.y;
+      // Then snap to grid if enabled
+      const gs = window._workspaceSettings?.gridSize || 20;
+      if (window._workspaceSettings?.snapToGrid) {
+        const g = snapToGrid(x, y, gs);
+        x = g.x;
+        y = g.y;
+      }
+      updateWindowPos(win.id, x, y);
+      emit('window:request-move', { id: win.id, x, y });
     }
   });
 
