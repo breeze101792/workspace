@@ -65,6 +65,21 @@ export function FileExplorer({ window: win }: WindowProps) {
     }
   }
 
+  const [showNewMenu, setShowNewMenu] = useState(false);
+
+  async function createFile(name: string, template: string, type: string) {
+    if (!wsId) return;
+    const filePath = currentDir ? `${currentDir}/${name}` : name;
+    const res = await filesApi.writeFile(wsId, filePath, template);
+    if (res.ok) {
+      showToast(`Created ${name}`, 'success');
+      loadDir(currentDir);
+      addWindow({ type, title: name, file: filePath });
+    } else {
+      showToast(res.error, 'error');
+    }
+  }
+
   function goUp() {
     const parts = currentDir.split('/').filter(Boolean);
     parts.pop();
@@ -80,13 +95,25 @@ export function FileExplorer({ window: win }: WindowProps) {
           <button className="explorer-btn" onClick={goUp} title="Go up">↑</button>
         )}
         <span className="explorer-path">/{currentDir}</span>
+        <div className="explorer-new-wrapper">
+          <button className="explorer-new-btn" onClick={() => setShowNewMenu(!showNewMenu)} title="New file">
+            + New
+          </button>
+          {showNewMenu && (
+            <div className="explorer-new-menu">
+              <button onClick={() => { setShowNewMenu(false); createFile('untitled.md', '# Untitled\n', 'markdown'); }}>Markdown</button>
+              <button onClick={() => { setShowNewMenu(false); createFile('untitled.txt', '', 'text'); }}>Text</button>
+              <button onClick={() => { setShowNewMenu(false); createFile('untitled.html', '<!DOCTYPE html>\n<html>\n<head><title>Page</title></head>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>\n', 'html'); }}>HTML</button>
+            </div>
+          )}
+        </div>
         <label className="explorer-upload-btn" title="Upload file">
           + Upload
           <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
         </label>
         <button className="explorer-btn" onClick={() => loadDir(currentDir)} title="Refresh">⟳</button>
       </div>
-      <div className="explorer-list">
+      <div className="explorer-list" onClick={() => setShowNewMenu(false)}>
         {loading && <div className="window-loading">Loading...</div>}
         {!loading && entries.length === 0 && (
           <div className="explorer-empty">Empty directory</div>

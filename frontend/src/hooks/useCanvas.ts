@@ -28,6 +28,7 @@ export function useCanvas() {
   }, [zoom, viewportX, viewportY, dispatch]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.target !== e.currentTarget) return;
     isPanning.current = true;
     lastPos.current = { x: e.clientX, y: e.clientY };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);

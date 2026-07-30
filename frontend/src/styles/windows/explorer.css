@@ -46,6 +46,57 @@
   background: var(--accent-dim);
 }
 
+.explorer-new-wrapper {
+  position: relative;
+}
+
+.explorer-new-btn {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.explorer-new-btn:hover {
+  background: var(--accent-dim);
+}
+
+.explorer-new-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+  min-width: 130px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.explorer-new-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.explorer-new-menu button:hover {
+  background: var(--accent-dim);
+}
+
+.explorer-new-menu button:first-child {
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.explorer-new-menu button:last-child {
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
 .explorer-list {
   flex: 1;
   overflow: auto;

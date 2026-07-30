@@ -24,12 +24,53 @@ export function Desktop() {
   }, [connected, dispatch]);
 
   useEffect(() => {
-    syncEngine.on('state:sync', (data: unknown) => {
+    const unsubSync = syncEngine.on('state:sync', (data: unknown) => {
       const ws = data as { id: string; name: string; windows: unknown[]; settings: unknown };
       if (ws && ws.id) {
         dispatch({ type: 'SET_WORKSPACE', workspace: ws as any });
       }
     });
+
+    const unsubAdded = syncEngine.on('window:added', (data: unknown) => {
+      dispatch({ type: 'ADD_WINDOW', window: data as any });
+    });
+
+    const unsubRemoved = syncEngine.on('window:removed', (data: unknown) => {
+      dispatch({ type: 'REMOVE_WINDOW', id: (data as any).id });
+    });
+
+    const unsubMoved = syncEngine.on('window:moved', (data: unknown) => {
+      const d = data as any;
+      dispatch({ type: 'MOVE_WINDOW', id: d.id, x: d.x, y: d.y });
+    });
+
+    const unsubResized = syncEngine.on('window:resized', (data: unknown) => {
+      const d = data as any;
+      dispatch({ type: 'RESIZE_WINDOW', id: d.id, width: d.width, height: d.height });
+    });
+
+    const unsubFocused = syncEngine.on('window:focused', (data: unknown) => {
+      dispatch({ type: 'FOCUS_WINDOW', id: (data as any).id });
+    });
+
+    const unsubMinimized = syncEngine.on('window:minimized', (data: unknown) => {
+      const d = data as any;
+      dispatch({ type: 'TOGGLE_MINIMIZE', id: d.id, minimized: d.minimized });
+    });
+
+    const unsubMaximized = syncEngine.on('window:maximized', (data: unknown) => {
+      const d = data as any;
+      dispatch({ type: 'TOGGLE_MAXIMIZE', id: d.id, maximized: d.maximized });
+    });
+
+    const unsubSettings = syncEngine.on('workspace:updated', (data: unknown) => {
+      dispatch({ type: 'UPDATE_SETTINGS', settings: data as any });
+    });
+
+    return () => {
+      unsubSync(); unsubAdded(); unsubRemoved(); unsubMoved(); unsubResized();
+      unsubFocused(); unsubMinimized(); unsubMaximized(); unsubSettings();
+    };
   }, [dispatch]);
 
   useEffect(() => {

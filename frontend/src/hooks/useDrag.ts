@@ -10,6 +10,7 @@ export function useDrag({ onDrag, onDragEnd }: DragOptions) {
   const lastPos = useRef({ x: 0, y: 0 });
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
     const target = e.currentTarget as HTMLElement;
     target.setPointerCapture(e.pointerId);
     dragging.current = true;

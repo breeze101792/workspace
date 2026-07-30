@@ -141,7 +141,9 @@ async function handleMessage(workspaceId, type, data, sender) {
       };
       wsState.windows.push(newWindow);
       await workspaceManager.updateWorkspace(workspaceId, { windows: wsState.windows });
-      broadcast(workspaceId, { type: 'window:added', workspace: workspaceId, data: newWindow }, sender);
+      const addedMsg = { type: 'window:added', workspace: workspaceId, data: newWindow };
+      broadcast(workspaceId, addedMsg, sender);
+      sendTo(sender, addedMsg);
       break;
     }
     case 'workspace:updateSettings': {

@@ -20,8 +20,8 @@ type Action =
   | { type: 'MOVE_WINDOW'; id: string; x: number; y: number }
   | { type: 'RESIZE_WINDOW'; id: string; width: number; height: number }
   | { type: 'FOCUS_WINDOW'; id: string }
-  | { type: 'TOGGLE_MINIMIZE'; id: string }
-  | { type: 'TOGGLE_MAXIMIZE'; id: string }
+  | { type: 'TOGGLE_MINIMIZE'; id: string; minimized?: boolean }
+  | { type: 'TOGGLE_MAXIMIZE'; id: string; maximized?: boolean }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<WorkspaceSettings> }
   | { type: 'UPDATE_WINDOW_METADATA'; id: string; metadata: Record<string, unknown> };
 
@@ -115,7 +115,9 @@ function workspaceReducer(state: WorkspaceState, action: Action): WorkspaceState
         workspace: {
           ...state.workspace,
           windows: state.workspace.windows.map((w) =>
-            w.id === action.id ? { ...w, minimized: !w.minimized } : w
+            w.id === action.id
+              ? { ...w, minimized: action.minimized !== undefined ? action.minimized : !w.minimized }
+              : w
           ),
         },
       };
@@ -128,7 +130,9 @@ function workspaceReducer(state: WorkspaceState, action: Action): WorkspaceState
         workspace: {
           ...state.workspace,
           windows: state.workspace.windows.map((w) =>
-            w.id === action.id ? { ...w, maximized: !w.maximized } : w
+            w.id === action.id
+              ? { ...w, maximized: action.maximized !== undefined ? action.maximized : !w.maximized }
+              : w
           ),
         },
       };
