@@ -3,6 +3,12 @@ dist/
 .env
 *.log
 
+# Python
+__pycache__/
+*.py[cod]
+venv/
+*.egg-info/
+
 # Local data directory
 ~/.config/workspace/
 
@@ -13,7 +19,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-
-# Build artifacts
-frontend/dist/
-backend/dist/
