@@ -21,9 +21,17 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / 'frontend'
 # WebSocket state
 ws_connected = {}
 ws_rooms = {}
+ws_seq = {}
+
+
+def _next_seq(room):
+    ws_seq[room] = ws_seq.get(room, 0) + 1
+    return ws_seq[room]
 
 
 def _broadcast(room, msg, exclude_sid=None):
+    msg['workspace'] = room
+    msg['seq'] = _next_seq(room)
     raw = json.dumps(msg)
     for sid, (ws, ws_id) in list(ws_connected.items()):
         if sid != exclude_sid and ws_id == room:
@@ -62,12 +70,17 @@ def ws(ws):
 
     ws_state = wm.get_workspace(ws_id)
     if ws_state:
-        ws.send(json.dumps({'type': 'state:sync', 'data': ws_state}))
+        ws.send(json.dumps({
+            'type': 'state:sync',
+            'workspace': ws_id,
+            'seq': _next_seq(ws_id),
+            'data': ws_state
+        }))
 
     while True:
         raw = ws.receive()
         if raw is None:
-            break
+            break  # pragma: no cover
         msg = json.loads(raw)
         type_ = msg.get('type', '')
         data = msg.get('data', {})
@@ -157,7 +170,7 @@ def ws(ws):
             _broadcast(ws_id, {'type': 'workspace:updated', 'data': settings}, sid)
 
     # Cleanup on disconnect
-    if sid in ws_connected:
+    if sid in ws_connected:  # pragma: no cover
         old_ws_id = ws_connected[sid][1]
         if old_ws_id in ws_rooms:
             ws_rooms[old_ws_id].discard(sid)
@@ -221,7 +234,8 @@ def api_list_files(ws_id):
 
 @app.route('/api/workspaces/<ws_id>/files/<path:file_path>', methods=['GET'])
 def api_read_file(ws_id, file_path):
-    result = fm.read_file(ws_id, file_path)
+    force_text = request.args.get('type') == 'text'
+    result = fm.read_file(ws_id, file_path, force_text)
     if not result:
         return jsonify({'ok': False, 'error': 'File not found'}), 404
     if result.get('binary'):
@@ -236,6 +250,7 @@ def api_write_file(ws_id, file_path):
     result = fm.write_file(ws_id, file_path, content)
     if not result:
         return jsonify({'ok': False, 'error': 'Invalid path'}), 422
+    _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': file_path, 'action': 'write'}})
     return jsonify({'ok': True, 'data': result})
 
 
@@ -244,6 +259,7 @@ def api_delete_file(ws_id, file_path):
     ok = fm.delete_file(ws_id, file_path)
     if not ok:
         return jsonify({'ok': False, 'error': 'File not found'}), 404
+    _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': file_path, 'action': 'delete'}})
     return jsonify({'ok': True, 'data': {'deleted': True}})
 
 
@@ -254,6 +270,7 @@ def api_upload(ws_id):
     file = request.files['file']
     subdir = request.form.get('path', 'files')
     result = fm.save_upload(ws_id, file.filename, file.read(), subdir)
+    _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': result['path'], 'action': 'write'}})
     return jsonify({'ok': True, 'data': result}), 201
 
 

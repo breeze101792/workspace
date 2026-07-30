@@ -1,11 +1,11 @@
 import { emit } from './state.js';
 
 let panX = 0, panY = 0, zoom = 1;
-
-const canvas = document.getElementById('canvas');
-const desktop = document.getElementById('desktop');
+let canvas;
 
 export function initCanvas() {
+  canvas = document.getElementById('canvas');
+
   canvas.addEventListener('wheel', (e) => {
     if (e.ctrlKey) {
       e.preventDefault();
@@ -13,6 +13,7 @@ export function initCanvas() {
       zoom = Math.max(0.25, Math.min(4, zoom * delta));
       updateTransform();
       emit('canvas:zoom', zoom);
+      emit('canvas:viewport-changed', { zoom, panX, panY });
     }
   });
 
@@ -42,7 +43,21 @@ export function initCanvas() {
     if (isPanning) {
       isPanning = false;
       canvas.style.cursor = '';
+      emit('canvas:viewport-changed', { zoom, panX, panY });
     }
+  });
+
+  // Double-click to create markdown
+  canvas.addEventListener('dblclick', (e) => {
+    if (e.target !== canvas) return;
+    emit('canvas:dblclick', { x: e.offsetX, y: e.offsetY });
+  });
+
+  // Right-click context menu
+  canvas.addEventListener('contextmenu', (e) => {
+    if (e.target !== canvas) return;
+    e.preventDefault();
+    emit('canvas:contextmenu', { x: e.clientX, y: e.clientY });
   });
 }
 

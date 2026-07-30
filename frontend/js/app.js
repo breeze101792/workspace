@@ -9,6 +9,36 @@ import {
 
 let currentWsId = null;
 
+// --- Toast ---
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 5000);
+}
+
+// --- Welcome state ---
+
+function showWelcome(show) {
+  document.getElementById('welcome-placeholder').classList.toggle('hidden', !show);
+}
+
+// --- Context menu ---
+
+function showContextMenu(x, y) {
+  const menu = document.getElementById('context-menu');
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.classList.remove('hidden');
+}
+
+function hideContextMenu() {
+  document.getElementById('context-menu').classList.add('hidden');
+}
+
 // --- Bootstrap ---
 
 async function init() {
@@ -58,6 +88,38 @@ function setupUI() {
   // Create workspace form
   document.getElementById('btn-create-ws').addEventListener('click', createWorkspace);
 
+  // Welcome buttons
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      if (action === 'upload') {
+        document.getElementById('file-upload-input').click();
+      } else {
+        handleNewWindow(action);
+      }
+    });
+  });
+
+  // Context menu actions
+  document.querySelectorAll('#context-menu .menu-item[data-action]').forEach(item => {
+    item.addEventListener('click', () => {
+      const action = item.dataset.action;
+      hideContextMenu();
+      if (action === 'upload') {
+        document.getElementById('file-upload-input').click();
+      } else {
+        handleNewWindow(action);
+      }
+    });
+  });
+
+  // Hide context menu on click outside
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('context-menu').contains(e.target)) {
+      hideContextMenu();
+    }
+  });
+
   // Window events from titlebar/resize
   on('windows:changed', renderDock);
   on('window:request-move', (data) => send('window:move', data));
@@ -76,11 +138,31 @@ function setupUI() {
     send('window:close', { id });
   });
 
+  // Canvas events
+  on('canvas:contextmenu', (data) => showContextMenu(data.x, data.y));
+  on('canvas:dblclick', (data) => {
+    handleNewWindow('markdown', { x: data.x, y: data.y });
+  });
+  on('canvas:viewport-changed', (data) => {
+    if (currentWsId) {
+      send('workspace:updateSettings', { zoom: data.zoom, viewportX: data.panX, viewportY: data.panY });
+    }
+  });
+
+  // WS connection state
+  on('ws:connected', () => {
+    document.getElementById('reconnecting-indicator').classList.add('hidden');
+  });
+  on('ws:disconnected', () => {
+    document.getElementById('reconnecting-indicator').classList.remove('hidden');
+  });
+
   // WS events from other clients
   on('state:sync', (data) => {
     const wins = (data.windows || []).map(w => ({ ...w, _wsId: currentWsId }));
     setWindows(wins);
     renderAllWindows();
+    showWelcome(!wins.length);
   });
   on('window:moved', (data) => {
     const w = getWindows().find(ww => ww.id === data.id);
@@ -102,7 +184,17 @@ function setupUI() {
     if (!getWindows().find(w => w.id === data.id)) {
       data._wsId = currentWsId;
       addWindow(data);
+      showWelcome(false);
     }
+  });
+  on('file:changed', () => {
+    // Refresh file explorer windows
+    getWindows().filter(w => w.type === 'explorer').forEach(w => {
+      const content = document.getElementById(`wnd-${w.id}-content`);
+      if (content) {
+        import('./window-factory.js').then(m => m.renderWindowContent(w));
+      }
+    });
   });
 
   // Upload button
@@ -113,19 +205,44 @@ function setupUI() {
     if (!file || !currentWsId) return;
     const res = await api.upload(currentWsId, file);
     if (res.ok) {
-      // If image, open in new window
+      showToast('Uploaded ' + file.name, 'success');
       if (res.data.mime.startsWith('image/')) {
         const id = 'wnd_' + Math.random().toString(36).slice(2, 10);
         handleNewWindow('image', { id, file: res.data.path, title: file.name });
       }
+    } else {
+      showToast('Upload failed: ' + (res.error || 'unknown error'), 'error');
     }
     uploadInput.value = '';
+  });
+
+  // Drag-and-drop file upload
+  const container = document.getElementById('canvas-container');
+  container.addEventListener('dragover', (e) => { e.preventDefault(); container.style.outline = '2px dashed var(--accent)'; });
+  container.addEventListener('dragleave', () => { container.style.outline = ''; });
+  container.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    container.style.outline = '';
+    if (!currentWsId) return;
+    for (const file of e.dataTransfer.files) {
+      const res = await api.upload(currentWsId, file);
+      if (res.ok) {
+        showToast('Uploaded ' + file.name, 'success');
+        if (res.data.mime.startsWith('image/')) {
+          const id = 'wnd_' + Math.random().toString(36).slice(2, 10);
+          handleNewWindow('image', { id, file: res.data.path, title: file.name });
+        }
+      } else {
+        showToast('Upload failed: ' + (res.error || 'unknown error'), 'error');
+      }
+    }
   });
 
   // Make _openWindow accessible to explorer
   window._openWindow = (win) => {
     win._wsId = currentWsId;
     addWindow(win);
+    showWelcome(false);
     if (win.type !== 'explorer') {
       send('window:open', {
         id: win.id, type: win.type, title: win.title,
@@ -157,17 +274,15 @@ async function switchToWorkspace(wsId) {
   if (!res.ok) return;
 
   const ws = res.data;
-  workspaceName = ws.name;
   document.getElementById('ws-name').textContent = ws.name;
 
-  // Set viewport
   const settings = ws.settings || {};
   setViewport(settings.viewportX || 0, settings.viewportY || 0, settings.zoom || 1);
 
-  // Set windows
   const wins = (ws.windows || []).map(w => ({ ...w, _wsId: wsId }));
   setWindows(wins);
   renderAllWindows();
+  showWelcome(!wins.length);
 }
 
 function renderWorkspaceList(workspaces) {
@@ -188,9 +303,12 @@ async function createWorkspace() {
   const res = await api.post('/api/workspaces', { name });
   if (res.ok) {
     hideModal();
+    showToast('Workspace created', 'success');
     const list = await api.get('/api/workspaces');
     if (list.ok) renderWorkspaceList(list.data);
     await switchToWorkspace(res.data.id);
+  } else {
+    showToast('Failed: ' + (res.error || 'unknown error'), 'error');
   }
 }
 
@@ -207,17 +325,17 @@ function hideModal() {
 function handleNewWindow(type, overrides = {}) {
   const titles = { markdown: 'New Markdown', text: 'New Text', html: 'New HTML', image: 'Image Viewer', explorer: 'File Explorer' };
   const id = overrides.id || 'wnd_' + Math.random().toString(36).slice(2, 10);
-  const x = 150 + Math.random() * 100;
-  const y = 150 + Math.random() * 100;
+  const x = overrides.x || (150 + Math.random() * 100);
+  const y = overrides.y || (150 + Math.random() * 100);
 
-  if (type === 'explorer' || type === 'image' && overrides.file) {
+  if (type === 'explorer' || (type === 'image' && overrides.file)) {
     const win = { id, type, title: overrides.title || titles[type], x, y, width: 600, height: 400, zIndex: 100, minimized: false, maximized: false, file: overrides.file || null, filePath: overrides.file || null, metadata: {}, _wsId: currentWsId };
     addWindow(win);
+    showWelcome(false);
     if (type !== 'explorer') send('window:open', { id, type, title: win.title, x, y, file: win.file });
     return;
   }
 
-  // Create file for text-based types
   const extMap = { markdown: 'md', text: 'txt', html: 'html' };
   const dirMap = { markdown: 'markdown', text: 'markdown', html: 'html' };
   const ext = extMap[type] || 'txt';
@@ -234,6 +352,7 @@ function handleNewWindow(type, overrides = {}) {
 
   const win = { id, type, title: fileName, x, y, width: 600, height: 400, zIndex: 100, minimized: false, maximized: false, file: filePath, filePath, metadata: {}, _wsId: currentWsId };
   addWindow(win);
+  showWelcome(false);
   send('window:open', { id, type, title: fileName, x, y, file: filePath });
 }
 

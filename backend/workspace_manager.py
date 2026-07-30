@@ -30,7 +30,7 @@ def create_workspace(name: str) -> dict:
     ws_dir = safe_fs.workspace_path(ws_id)
     ws_dir.mkdir(parents=True, exist_ok=True)
 
-    for sub in ('markdown', 'html', 'images', 'files', 'cache'):
+    for sub in ('markdown', 'text', 'html', 'images', 'files', 'cache'):
         (ws_dir / sub).mkdir(exist_ok=True)
 
     welcome_html = '<!DOCTYPE html>\n<html>\n<head><title>Welcome</title></head>\n<body>\n  <h1>Welcome</h1>\n  <p>AI-native workspace ready.</p>\n</body>\n</html>\n'

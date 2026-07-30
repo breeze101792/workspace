@@ -1,11 +1,17 @@
 import { emit } from './state.js';
 import { updateWindowSize } from './window-manager.js';
 
-export function createResizeHandle(winId) {
-  const el = document.createElement('div');
-  el.className = 'resize-handle';
+const HANDLE_TYPES = {
+  se: 'resize-handle-se',
+  e: 'resize-handle-e',
+  s: 'resize-handle-s',
+};
 
-  let dragging = false, startX, startY, origW, origH;
+function makeHandle(winId, type) {
+  const el = document.createElement('div');
+  el.className = 'resize-handle ' + HANDLE_TYPES[type];
+
+  let dragging = false, startX, startY, origW, origH, origX, origY;
 
   el.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
@@ -15,6 +21,8 @@ export function createResizeHandle(winId) {
     const elWnd = document.getElementById(`wnd-${winId}`);
     origW = parseInt(elWnd.style.width) || 600;
     origH = parseInt(elWnd.style.height) || 400;
+    origX = parseInt(elWnd.style.left) || 0;
+    origY = parseInt(elWnd.style.top) || 0;
     el.setPointerCapture(e.pointerId);
   });
 
@@ -22,7 +30,14 @@ export function createResizeHandle(winId) {
     if (!dragging) return;
     const dw = e.clientX - startX;
     const dh = e.clientY - startY;
-    updateWindowSize(winId, Math.max(240, origW + dw), Math.max(160, origH + dh));
+    let w = origW, h = origH;
+    if (type === 'se' || type === 'e') w = Math.max(240, origW + dw);
+    if (type === 'se' || type === 's') h = Math.max(160, origH + dh);
+    updateWindowSize(winId, w, h);
+
+    if (type === 's') {
+      updateWindowSize(winId, origW, h);
+    }
   });
 
   el.addEventListener('pointerup', () => {
@@ -38,4 +53,12 @@ export function createResizeHandle(winId) {
   });
 
   return el;
+}
+
+export function createResizeHandle(winId) {
+  const container = document.createDocumentFragment();
+  container.appendChild(makeHandle(winId, 'se'));
+  container.appendChild(makeHandle(winId, 'e'));
+  container.appendChild(makeHandle(winId, 's'));
+  return container;
 }

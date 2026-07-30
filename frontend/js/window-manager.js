@@ -12,6 +12,15 @@ export function setWindows(ws) { windows = ws; }
 
 export function nextZ() { return ++zCounter; }
 
+function clampToCanvas(x, y, w, h) {
+  const container = document.getElementById('canvas-container');
+  if (!container) return { x, y };
+  const rect = container.getBoundingClientRect();
+  const maxX = Math.max(0, rect.width - w);
+  const maxY = Math.max(0, rect.height - h);
+  return { x: Math.max(0, Math.min(x, maxX)), y: Math.max(0, Math.min(y, maxY)) };
+}
+
 export function addWindow(win) {
   windows.push(win);
   renderWindow(win);
@@ -30,8 +39,9 @@ export function updateWindowPos(id, x, y) {
   if (w) { w.x = x; w.y = y; }
   const el = document.getElementById(`wnd-${id}`);
   if (el) {
-    el.style.left = x + 'px';
-    el.style.top = y + 'px';
+    const clamped = clampToCanvas(x, y, parseInt(el.style.width) || 600, parseInt(el.style.height) || 400);
+    el.style.left = clamped.x + 'px';
+    el.style.top = clamped.y + 'px';
   }
 }
 
@@ -110,7 +120,8 @@ export function renderWindow(win) {
   const el = document.createElement('div');
   el.id = `wnd-${win.id}`;
   el.className = 'window';
-  el.style.cssText = `left:${win.x}px;top:${win.y}px;width:${win.width}px;height:${win.height}px;z-index:${win.zIndex}`;
+  const clamped = clampToCanvas(win.x, win.y, win.width, win.height);
+  el.style.cssText = `left:${clamped.x}px;top:${clamped.y}px;width:${win.width}px;height:${win.height}px;z-index:${win.zIndex}`;
 
   const tb = createTitleBar(win);
   el.appendChild(tb);
@@ -121,7 +132,11 @@ export function renderWindow(win) {
   el.appendChild(content);
 
   const resize = createResizeHandle(win.id);
-  el.appendChild(resize);
+  if (resize instanceof DocumentFragment) {
+    el.appendChild(resize);
+  } else {
+    el.appendChild(resize);
+  }
 
   el.addEventListener('mousedown', () => {
     const currentZ = parseInt(el.style.zIndex) || 0;

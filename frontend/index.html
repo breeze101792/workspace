@@ -21,14 +21,39 @@
         <span id="ws-name">Loading...</span>
         <div id="ws-list"></div>
       </div>
+      <span id="reconnecting-indicator" class="reconnecting hidden">⟳ reconnecting...</span>
       <div class="topbar-spacer"></div>
       <button class="topbar-btn" id="btn-new-ws">+ New</button>
     </div>
 
     <!-- Canvas -->
     <div id="canvas-container">
-      <div id="canvas"></div>
+      <div id="canvas">
+        <div id="welcome-placeholder" class="hidden">
+          <div class="welcome-content">
+            <h1>Welcome to your workspace</h1>
+            <p>Drag files here to open, or get started with:</p>
+            <div class="welcome-actions">
+              <button class="welcome-btn" data-action="markdown">New Markdown</button>
+              <button class="welcome-btn" data-action="text">New Text</button>
+              <button class="welcome-btn" data-action="upload">Upload File</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="hidden">
+      <div class="menu-item" data-action="markdown">New Markdown</div>
+      <div class="menu-item" data-action="text">New Text</div>
+      <div class="menu-item" data-action="html">New HTML</div>
+      <div class="menu-separator"></div>
+      <div class="menu-item" data-action="upload">Upload File</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
 
     <!-- Dock -->
     <div id="dock">

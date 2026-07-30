@@ -19,3 +19,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Coverage
+.coverage
+.coverage.*
+*,cover
+.pytest_cache/
+htmlcov/

@@ -1,5 +1,6 @@
 import os
 import mimetypes
+from datetime import datetime, timezone
 from pathlib import Path
 from . import safe_fs
 
@@ -25,12 +26,12 @@ def _resolve_path(ws_id: str, user_path: str) -> Path | None:
     return resolved
 
 
-def read_file(ws_id: str, file_path: str) -> dict | None:
+def read_file(ws_id: str, file_path: str, force_text: bool = False) -> dict | None:
     resolved = _resolve_path(ws_id, file_path)
     if not resolved or not resolved.exists() or not resolved.is_file():
         return None
     ext = resolved.suffix.lower()
-    if ext in TEXT_EXTENSIONS:
+    if ext in TEXT_EXTENSIONS or force_text:
         content = resolved.read_text(encoding='utf-8')
         mime = TEXT_MIME_MAP.get(ext, 'text/plain')
         return {"content": content, "mime": mime, "binary": False}
@@ -73,6 +74,8 @@ def list_files(ws_id: str, directory: str = '') -> dict | None:
             info["size"] = entry.stat().st_size
             mime = mimetypes.guess_type(str(entry))[0] or 'application/octet-stream'
             info["mime"] = mime
+            stat = entry.stat()
+            info["updatedAt"] = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
         entries.append(info)
     return {"path": directory or '.', "entries": entries}
 

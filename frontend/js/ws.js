@@ -43,6 +43,8 @@ export function connect(workspaceId) {
         emit('window:added', data);
       } else if (type === 'workspace:updated') {
         emit('workspace:updated', data);
+      } else if (type === 'file:changed') {
+        emit('file:changed', data);
       }
     } catch (e) {
       console.error('WS parse error:', e);
