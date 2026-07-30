@@ -8,7 +8,6 @@ import {
 } from './window-manager.js';
 
 let currentWsId = null;
-let workspaceName = '';
 
 // --- Bootstrap ---
 
@@ -16,6 +15,22 @@ async function init() {
   initCanvas();
   setupUI();
   await loadWorkspace();
+}
+
+function renderDock() {
+  const dock = document.getElementById('dock-minimized');
+  dock.innerHTML = '';
+  getWindows().filter(w => w.minimized).forEach(w => {
+    const item = document.createElement('div');
+    item.className = 'dock-item';
+    item.textContent = w.title;
+    item.addEventListener('click', () => {
+      toggleMinimize(w.id, false);
+      focusWindow(w.id);
+      send('window:minimize', { id: w.id, minimized: false });
+    });
+    dock.appendChild(item);
+  });
 }
 
 function setupUI() {
@@ -44,6 +59,7 @@ function setupUI() {
   document.getElementById('btn-create-ws').addEventListener('click', createWorkspace);
 
   // Window events from titlebar/resize
+  on('windows:changed', renderDock);
   on('window:request-move', (data) => send('window:move', data));
   on('window:request-resize', (data) => send('window:resize', data));
   on('window:request-focus', (id) => send('window:focus', { id }));

@@ -273,7 +273,7 @@ def server_error(e):
 
 def main():
     ensure_dirs()
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5010))
     host = os.environ.get('HOST', '0.0.0.0')
     debug = os.environ.get('DEBUG', '1') == '1'
     print(f'Server starting on {host}:{port}')

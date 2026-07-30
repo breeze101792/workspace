@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BACKEND_PORT="${PORT:-5000}"
+BACKEND_PORT="${PORT:-5010}"
 BACKEND_HOST="${HOST:-0.0.0.0}"
 
 cleanup() {
