@@ -185,13 +185,13 @@ async function _renderExplorer(wsId, el, dir) {
   let html = '';
   if (dir) {
     const parent = dir.split('/').slice(0, -1).join('/');
-    html += `<div class="explorer-item" data-path="${parent}">📁 ..</div>`;
+    html += `<div class="explorer-item" data-path="${parent}" data-type="directory">📁 ..</div>`;
   }
   for (const entry of res.data.entries) {
     const icon = entry.type === 'directory' ? '📁' : '📄';
     const fullPath = dir ? `${dir}/${entry.name}` : entry.name;
     const draggable = entry.type === 'file' ? 'true' : 'false';
-    html += `<div class="explorer-item" data-path="${fullPath}" data-type="${entry.type}" draggable="${draggable}">${icon} ${entry.name}</div>`;
+    html += `<div class="explorer-item" data-path="${fullPath}" data-type="${entry.type}" data-name="${entry.name}" draggable="${draggable}">${icon} ${entry.name}</div>`;
   }
   el.innerHTML = html;
 
@@ -201,18 +201,20 @@ async function _renderExplorer(wsId, el, dir) {
       e.dataTransfer.setData('text/x-workspace-path', item.dataset.path);
       e.dataTransfer.effectAllowed = 'copy';
     });
-    item.addEventListener('dblclick', () => {
+    item.addEventListener('click', () => {
       const path = item.dataset.path;
       const type = item.dataset.type;
+      const name = item.dataset.name;
       if (type === 'directory') {
         _renderExplorer(wsId, el, path);
-      } else {
-        const ext = path.split('.').pop().toLowerCase();
-        const typeMap = { md: 'markdown', txt: 'text', html: 'html', htm: 'html', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image', webp: 'image' };
-        const wndType = typeMap[ext] || 'text';
-        const id = 'wnd_' + Math.random().toString(36).slice(2, 10);
-        window._openWindow({ id, type: wndType, title: entry.name, x: 200, y: 200, width: 600, height: 400, file: path, filePath: path, zIndex: 100, minimized: false, maximized: false, metadata: {} });
+        return;
       }
+      if (!path || type !== 'file') return;
+      const ext = path.split('.').pop().toLowerCase();
+      const typeMap = { md: 'markdown', txt: 'text', html: 'html', htm: 'html', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image', webp: 'image' };
+      const wndType = typeMap[ext] || 'text';
+      const id = 'wnd_' + Math.random().toString(36).slice(2, 10);
+      window._openWindow({ id, type: wndType, title: name, x: 200, y: 200, width: 600, height: 400, file: path, filePath: path, zIndex: 100, minimized: false, maximized: false, metadata: {} });
     });
   });
 }
