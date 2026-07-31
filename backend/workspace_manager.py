@@ -4,6 +4,7 @@ import zipfile
 import io
 from datetime import datetime, timezone
 from . import safe_fs
+from . import config_manager as cm
 
 DEFAULT_WINDOWS = [
     {
@@ -56,6 +57,7 @@ def create_workspace(name: str) -> dict:
     }
 
     safe_fs.atomic_write(safe_fs.json_path(ws_id), workspace)
+    cm.add_workspace_to_list(ws_id)
     return workspace
 
 
@@ -97,6 +99,7 @@ def delete_workspace(ws_id: str) -> bool:
     if not path.exists():
         return False
     shutil.rmtree(path)
+    cm.remove_workspace_from_list(ws_id)
     return True
 
 
@@ -153,4 +156,5 @@ def import_workspace(name: str, zip_data: bytes) -> dict | None:
         }
 
     safe_fs.atomic_write(json_path, workspace)
+    cm.add_workspace_to_list(ws_id)
     return workspace

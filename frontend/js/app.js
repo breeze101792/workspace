@@ -41,6 +41,47 @@ function hideContextMenu() {
   document.getElementById('context-menu').classList.add('hidden');
 }
 
+// --- Zoom controls ---
+
+function adjustZoom(delta) {
+  const { zoom } = getViewport();
+  const newZoom = Math.max(0.25, Math.min(4, zoom + delta));
+  setZoom(newZoom);
+}
+
+function setZoom(z) {
+  const { x, y } = getViewport();
+  setViewport(x, y, z);
+  document.getElementById('zoom-level').textContent = Math.round(z * 100) + '%';
+  if (currentWsId) {
+    send('workspace:updateSettings', { zoom: z, viewportX: x, viewportY: y });
+  }
+}
+
+// --- Minimize all ---
+
+function minimizeAll() {
+  getWindows().forEach(w => {
+    if (!w.minimized) {
+      toggleMinimize(w.id, true);
+      send('window:minimize', { id: w.id, minimized: true });
+    }
+  });
+}
+
+// --- Theme ---
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  api.put('/api/config', { theme: next });
+}
+
+function hideSettingsMenu() {
+  document.getElementById('settings-menu').classList.add('hidden');
+}
+
 // --- Bootstrap ---
 
 async function init() {
@@ -120,6 +161,34 @@ function setupUI() {
   document.addEventListener('click', (e) => {
     if (!document.getElementById('context-menu').contains(e.target)) {
       hideContextMenu();
+    }
+  });
+
+  // Zoom controls
+  document.getElementById('btn-zoom-in').addEventListener('click', () => adjustZoom(0.1));
+  document.getElementById('btn-zoom-out').addEventListener('click', () => adjustZoom(-0.1));
+  document.getElementById('btn-zoom-reset').addEventListener('click', () => setZoom(1));
+  document.getElementById('menu-zoom-reset').addEventListener('click', () => { hideSettingsMenu(); setZoom(1); });
+  on('canvas:zoom', (z) => {
+    document.getElementById('zoom-level').textContent = Math.round(z * 100) + '%';
+  });
+
+  // Minimize all
+  document.getElementById('btn-minimize-all').addEventListener('click', minimizeAll);
+  document.getElementById('menu-minimize-all').addEventListener('click', () => { hideSettingsMenu(); minimizeAll(); });
+
+  // Settings menu
+  document.getElementById('btn-settings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('settings-menu').classList.toggle('hidden');
+  });
+  document.getElementById('menu-toggle-theme').addEventListener('click', () => {
+    hideSettingsMenu();
+    toggleTheme();
+  });
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('settings-group').contains(e.target)) {
+      hideSettingsMenu();
     }
   });
 
@@ -370,19 +439,42 @@ function handleKeyboard(e) {
 }
 
 async function loadWorkspace() {
-  const res = await api.get('/api/workspaces');
-  if (!res.ok || !res.data.length) {
-    showCreateWorkspace();
-    return;
-  }
+  document.getElementById('loading-skeleton').classList.remove('hidden');
+  try {
+    const [wsRes, cfgRes] = await Promise.all([
+      api.get('/api/workspaces'),
+      api.get('/api/config'),
+    ]);
+    if (!wsRes.ok || !wsRes.data.length) {
+      document.getElementById('loading-skeleton').classList.add('hidden');
+      showCreateWorkspace();
+      return;
+    }
 
-  const ws = res.data[0];
-  await switchToWorkspace(ws.id);
-  renderWorkspaceList(res.data);
+    // Apply theme from global config
+    const config = cfgRes.ok ? cfgRes.data : {};
+    applyTheme(config.theme || 'dark');
+
+    // Use activeWorkspace from config if valid, otherwise first workspace
+    const activeId = config.activeWorkspace;
+    const ws = wsRes.data.find(w => w.id === activeId) || wsRes.data[0];
+    if (ws.id !== activeId) {
+      await api.put('/api/config', { activeWorkspace: ws.id });
+    }
+    await switchToWorkspace(ws.id);
+    renderWorkspaceList(wsRes.data);
+  } finally {
+    document.getElementById('loading-skeleton').classList.add('hidden');
+  }
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
 }
 
 async function switchToWorkspace(wsId) {
   currentWsId = wsId;
+  api.put('/api/config', { activeWorkspace: wsId });
   disconnect();
   connect(wsId);
 

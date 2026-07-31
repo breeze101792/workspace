@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -181,9 +182,22 @@ try:
         return _ui_context(workspaceId)
 
     if __name__ == '__main__':  # pragma: no cover
-        mcp.run()
+        parser = argparse.ArgumentParser(description='Workspace MCP Server')
+        parser.add_argument('--host', default='127.0.0.1', help='Bind address')
+        parser.add_argument('--port', type=int, default=5011, help='Port')
+        parser.add_argument('--transport', choices=['stdio', 'sse'], default='sse', help='Transport protocol')
+        args = parser.parse_args()
+        mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 except ImportError:  # pragma: no cover
     if __name__ == '__main__':  # pragma: no cover
+        parser = argparse.ArgumentParser(description='Workspace MCP Server (stdio fallback)')
+        parser.add_argument('--host', default='127.0.0.1')
+        parser.add_argument('--port', type=int, default=5011)
+        parser.add_argument('--transport', choices=['stdio', 'sse'], default='stdio')
+        args = parser.parse_args()
+        if args.transport != 'stdio':
+            print('SSE transport requires mcp package', file=sys.stderr)
+            sys.exit(1)
         SimpleMCP().run()
         sys.exit(0)

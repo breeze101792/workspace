@@ -12,6 +12,7 @@ from flask_sock import Sock
 from .safe_fs import ensure_dirs
 from . import workspace_manager as wm
 from . import file_manager as fm
+from . import config_manager as cm
 from . import plugin_loader
 from . import auth
 
@@ -181,6 +182,28 @@ def ws(ws):
 
 
 # --- Workspace API ---
+
+@app.route('/api/config', methods=['GET'])
+def api_get_config():
+    return jsonify({'ok': True, 'data': cm.read_config()})
+
+
+@app.route('/api/config', methods=['PUT'])
+def api_update_config():
+    data = request.get_json(silent=True) or {}
+    allowed = {'activeWorkspace', 'theme', 'language'}
+    update = {k: v for k, v in data.items() if k in allowed}
+    if 'activeWorkspace' in update:
+        cm.set_active_workspace(update['activeWorkspace'])
+    if 'theme' in update or 'language' in update:
+        cfg = cm.read_config()
+        if 'theme' in update:
+            cfg['theme'] = update['theme']
+        if 'language' in update:
+            cfg['language'] = update['language']
+        cm.write_config(cfg)
+    return jsonify({'ok': True, 'data': cm.read_config()})
+
 
 @app.route('/api/workspaces', methods=['GET'])
 def api_list_workspaces():

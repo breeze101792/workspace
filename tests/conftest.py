@@ -18,12 +18,22 @@ from backend.app import app
 
 
 @pytest.fixture(autouse=True)
-def isolated_config_dir(monkeypatch, tmp_path):
+def isolated_config_dir(monkeypatch, tmp_path, request):
     """Redirect the global config dir to a temp directory for every test."""
     monkeypatch.setattr(safe_fs, 'CONFIG_DIR', tmp_path / '.config' / 'workspace')
     monkeypatch.setattr(safe_fs, 'WORKSPACES_DIR', tmp_path / '.config' / 'workspace' / 'workspaces')
     safe_fs.WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
     yield tmp_path
+
+
+@pytest.fixture
+def clean_config():
+    """Remove persistent config file so test starts fresh."""
+    from backend import config_manager as cm
+    cf = cm._config_path()
+    if cf.exists():
+        cf.unlink()
+    yield
 
 
 @pytest.fixture

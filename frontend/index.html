@@ -23,12 +23,33 @@
       </div>
       <span id="reconnecting-indicator" class="reconnecting hidden">⟳ reconnecting...</span>
       <div class="topbar-spacer"></div>
+      <div class="topbar-group" id="zoom-controls">
+        <button class="topbar-btn" id="btn-zoom-out" title="Zoom Out">−</button>
+        <span class="topbar-label" id="zoom-level">100%</span>
+        <button class="topbar-btn" id="btn-zoom-in" title="Zoom In">+</button>
+        <button class="topbar-btn" id="btn-zoom-reset" title="Reset Zoom">⟲</button>
+      </div>
+      <button class="topbar-btn" id="btn-minimize-all" title="Minimize All">_ _</button>
+      <div class="topbar-group" id="settings-group">
+        <button class="topbar-btn" id="btn-settings" title="Settings">⚙</button>
+        <div id="settings-menu" class="dropdown-menu hidden">
+          <div class="menu-item" id="menu-toggle-theme">Toggle Light/Dark</div>
+          <div class="menu-separator"></div>
+          <div class="menu-item" id="menu-zoom-reset">Reset Zoom</div>
+          <div class="menu-separator"></div>
+          <div class="menu-item" id="menu-minimize-all">Minimize All</div>
+        </div>
+      </div>
       <button class="topbar-btn" id="btn-new-ws">+ New</button>
     </div>
 
     <!-- Canvas -->
     <div id="canvas-container">
       <div id="canvas">
+        <div id="loading-skeleton" class="hidden">
+          <div class="skeleton-card"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line" style="width:40%"></div><div class="skeleton-line" style="width:80%"></div></div>
+          <div class="skeleton-card"><div class="skeleton-line" style="width:50%"></div><div class="skeleton-line" style="width:70%"></div></div>
+        </div>
         <div id="welcome-placeholder" class="hidden">
           <div class="welcome-content">
             <h1>Welcome to your workspace</h1>
