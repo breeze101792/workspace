@@ -12,18 +12,31 @@ export function setWindows(ws) { windows = ws; }
 
 export function nextZ() { return ++zCounter; }
 
-function clampToCanvas(x, y, w, h) {
-  const container = document.getElementById('canvas-container');
-  if (!container) return { x, y };
-  const rect = container.getBoundingClientRect();
-  const maxX = Math.max(0, rect.width - w);
-  const maxY = Math.max(0, rect.height - h);
-  return { x: Math.max(0, Math.min(x, maxX)), y: Math.max(0, Math.min(y, maxY)) };
+export function focusWindow(id) {
+  const w = windows.find(w => w.id === id);
+  if (!w) return;
+  const maxZ = windows.reduce((m, x) => (x.zIndex > m ? x.zIndex : m), 0);
+  const z = maxZ + 1;
+  zCounter = Math.max(zCounter, z);
+  w.zIndex = z;
+  const el = document.getElementById(`wnd-${id}`);
+  if (el) {
+    el.style.zIndex = z;
+    el.classList.add('window-focused');
+  }
+  windows.forEach(other => {
+    if (other.id !== id) {
+      const oel = document.getElementById(`wnd-${other.id}`);
+      if (oel) oel.classList.remove('window-focused');
+    }
+  });
+  emit('window:focus-changed', id);
 }
 
 export function addWindow(win) {
   windows.push(win);
   renderWindow(win);
+  focusWindow(win.id);
   emit('windows:changed', windows);
 }
 
@@ -53,24 +66,6 @@ export function updateWindowSize(id, width, height) {
     el.style.width = width + 'px';
     el.style.height = height + 'px';
   }
-}
-
-export function focusWindow(id) {
-  const z = nextZ();
-  const w = windows.find(w => w.id === id);
-  if (w) w.zIndex = z;
-  const el = document.getElementById(`wnd-${id}`);
-  if (el) {
-    el.style.zIndex = z;
-    el.classList.add('window-focused');
-  }
-  windows.forEach(other => {
-    if (other.id !== id) {
-      const oel = document.getElementById(`wnd-${other.id}`);
-      if (oel) oel.classList.remove('window-focused');
-    }
-  });
-  emit('window:focus-changed', id);
 }
 
 export function toggleMinimize(id, val) {
@@ -114,6 +109,8 @@ export function toggleMaximize(id, val) {
 export function renderAllWindows() {
   document.querySelectorAll('.window').forEach(el => el.remove());
   windows.forEach(renderWindow);
+  const top = windows.reduce((m, w) => (w.zIndex > m.zIndex ? w : m), windows[0] || { zIndex: 0 });
+  if (top.id) focusWindow(top.id);
 }
 
 export function renderWindow(win) {
@@ -139,8 +136,7 @@ export function renderWindow(win) {
   }
 
   el.addEventListener('mousedown', () => {
-    const currentZ = parseInt(el.style.zIndex) || 0;
-    if (currentZ < zCounter) {
+    if (!el.classList.contains('window-focused')) {
       focusWindow(win.id);
       emit('window:request-focus', win.id);
     }
