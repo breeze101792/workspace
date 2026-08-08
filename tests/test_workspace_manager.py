@@ -38,6 +38,11 @@ def test_create_workspace_initial_settings():
     assert ws['settings']['viewportY'] == 0
 
 
+def test_create_workspace_file_watching_enabled_by_default():
+    ws = wm.create_workspace("Test WS")
+    assert ws['settings']['watchFiles'] is True
+
+
 def test_get_workspace_returns_saved():
     ws = wm.create_workspace("Persist Test")
     fetched = wm.get_workspace(ws['id'])

@@ -118,7 +118,8 @@ This is the single source of truth for the workspace UI state.
     "viewportX": 0,
     "viewportY": 0,
     "snapToGrid": false,
-    "gridSize": 20
+    "gridSize": 20,
+    "watchFiles": true
   }
 }
 ```

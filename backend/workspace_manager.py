@@ -53,6 +53,7 @@ def create_workspace(name: str) -> dict:
             "snapToGrid": False,
             "gridSize": 20,
             "wallpaper": None,
+            "watchFiles": True,
         },
     }
 
@@ -152,7 +153,7 @@ def import_workspace(name: str, zip_data: bytes) -> dict | None:
             'createdAt': now,
             'updatedAt': now,
             'windows': [],
-            'settings': {'zoom': 1.0, 'viewportX': 0, 'viewportY': 0, 'snapToGrid': False, 'gridSize': 20, 'wallpaper': None},
+            'settings': {'zoom': 1.0, 'viewportX': 0, 'viewportY': 0, 'snapToGrid': False, 'gridSize': 20, 'wallpaper': None, 'watchFiles': True},
         }
 
     safe_fs.atomic_write(json_path, workspace)

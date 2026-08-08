@@ -242,6 +242,10 @@ All messages are JSON over WebSocket:
 | `window:maximized` | Maximized | `{ id, maximized: true }` |
 | `workspace:updated` | Metadata/settings changed | Full settings object |
 | `file:changed` | File created/updated/deleted | `{ path, action: "write"\|"delete" }` |
+
+> **Note**: `file:changed` broadcasts are only emitted when the workspace's
+> `settings.watchFiles` is `true` (the default). Set `watchFiles: false` to
+> disable live file-change notifications for a workspace.
 | `state:sync` | Full state snapshot (on connect) | Full workspace.json |
 
 ### Client → Server Events
@@ -255,7 +259,7 @@ All messages are JSON over WebSocket:
 | `window:maximize` | Click maximize | `{ id }` |
 | `window:close` | Click close | `{ id }` |
 | `window:open` | Open file in new window | `{ type, file, title }` |
-| `workspace:updateSettings` | Zoom/pan change | `{ zoom, viewportX, viewportY }` |
+| `workspace:updateSettings` | Zoom/pan/theme/watchFiles change | `{ zoom, viewportX, viewportY, watchFiles }` |
 
 ### Sync Strategy
 

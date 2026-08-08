@@ -266,6 +266,99 @@ def test_file_delete_broadcasts_file_changed(server_with_ws):
     ws2.close()
 
 
+def test_file_write_suppressed_when_watch_disabled(server_with_ws):
+    """Disabling settings.watchFiles suppresses file:changed broadcasts."""
+    ws_url, ws_id, port = server_with_ws
+    ws1 = websocket.create_connection(ws_url, timeout=5)
+    ws2 = websocket.create_connection(ws_url, timeout=5)
+    ws1.recv()
+    ws2.recv()
+
+    ws1.send(json.dumps({"type": "workspace:updateSettings", "data": {"watchFiles": False}}))
+    msg = json.loads(ws2.recv())
+    assert msg['type'] == 'workspace:updated'
+    assert msg['data']['watchFiles'] is False
+
+    _http_put(port, f'/api/workspaces/{ws_id}/files/markdown/silent.md', {'content': 'hidden'})
+
+    ws2.settimeout(0.5)
+    with pytest.raises(Exception):
+        # No file:changed should arrive while watching is disabled
+        ws2.recv()
+
+    ws1.close()
+    ws2.close()
+
+
+def test_file_write_broadcasts_again_when_watch_reenabled(server_with_ws):
+    """Re-enabling settings.watchFiles resumes file:changed broadcasts."""
+    ws_url, ws_id, port = server_with_ws
+    ws1 = websocket.create_connection(ws_url, timeout=5)
+    ws2 = websocket.create_connection(ws_url, timeout=5)
+    ws1.recv()
+    ws2.recv()
+
+    ws1.send(json.dumps({"type": "workspace:updateSettings", "data": {"watchFiles": False}}))
+    ws2.recv()
+    ws1.send(json.dumps({"type": "workspace:updateSettings", "data": {"watchFiles": True}}))
+    msg = json.loads(ws2.recv())
+    assert msg['type'] == 'workspace:updated'
+    assert msg['data']['watchFiles'] is True
+
+    _http_put(port, f'/api/workspaces/{ws_id}/files/markdown/live.md', {'content': 'visible'})
+
+    msg = json.loads(ws2.recv())
+    assert msg['type'] == 'file:changed'
+    assert msg['data']['path'] == 'markdown/live.md'
+
+    ws1.close()
+    ws2.close()
+
+
+def test_file_delete_suppressed_when_watch_disabled(server_with_ws):
+    """Delete broadcasts are also suppressed when watching is disabled."""
+    ws_url, ws_id, port = server_with_ws
+    _http_put(port, f'/api/workspaces/{ws_id}/files/markdown/doomed.md', {'content': 'x'})
+
+    ws1 = websocket.create_connection(ws_url, timeout=5)
+    ws2 = websocket.create_connection(ws_url, timeout=5)
+    ws1.recv()
+    ws2.recv()
+
+    ws1.send(json.dumps({"type": "workspace:updateSettings", "data": {"watchFiles": False}}))
+    ws2.recv()
+
+    req = urllib.request.Request(
+        f'http://127.0.0.1:{port}/api/workspaces/{ws_id}/files/markdown/doomed.md',
+        method='DELETE',
+    )
+    urllib.request.urlopen(req, timeout=2).read()
+
+    ws2.settimeout(0.5)
+    with pytest.raises(Exception):
+        ws2.recv()
+
+    ws1.close()
+    ws2.close()
+
+
+def test_file_watching_enabled_helper():
+    """_file_watching_enabled defaults to True for unknown workspaces."""
+    from backend.app import _file_watching_enabled
+    from backend import workspace_manager as wm
+
+    # Unknown workspace -> enabled by default
+    assert _file_watching_enabled('ws_does_not_exist') is True
+
+    # Fresh workspace -> enabled by default
+    ws = wm.create_workspace("Watch Helper")
+    assert _file_watching_enabled(ws['id']) is True
+
+    # Explicitly disabled -> returns False
+    wm.update_workspace(ws['id'], {'settings': {'watchFiles': False}})
+    assert _file_watching_enabled(ws['id']) is False
+
+
 def test_sender_does_not_receive_own_broadcast(server_with_ws):
     """The originating client should not get its own broadcast back."""
     ws_url, ws_id, _ = server_with_ws

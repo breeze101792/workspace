@@ -266,7 +266,8 @@ function setupUI() {
     }
   });
   on('file:changed', () => {
-    // Refresh file explorer windows
+    // Refresh file explorer windows (unless file watching is disabled in settings)
+    if (window._workspaceSettings && window._workspaceSettings.watchFiles === false) return;
     getWindows().filter(w => w.type === 'explorer').forEach(w => {
       const content = document.getElementById(`wnd-${w.id}-content`);
       if (content) {

@@ -33,6 +33,13 @@ def _next_seq(room):
     return ws_seq[room]
 
 
+def _file_watching_enabled(ws_id) -> bool:
+    ws = wm.get_workspace(ws_id)
+    if not ws:
+        return True
+    return bool(ws.get('settings', {}).get('watchFiles', True))
+
+
 def _broadcast(room, msg, exclude_sid=None):
     msg['workspace'] = room
     msg['seq'] = _next_seq(room)
@@ -309,7 +316,8 @@ def api_write_file(ws_id, file_path):
     result = fm.write_file(ws_id, file_path, content)
     if not result:
         return jsonify({'ok': False, 'error': 'Invalid path'}), 422
-    _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': file_path, 'action': 'write'}})
+    if _file_watching_enabled(ws_id):
+        _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': file_path, 'action': 'write'}})
     return jsonify({'ok': True, 'data': result})
 
 
@@ -318,7 +326,8 @@ def api_delete_file(ws_id, file_path):
     ok = fm.delete_file(ws_id, file_path)
     if not ok:
         return jsonify({'ok': False, 'error': 'File not found'}), 404
-    _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': file_path, 'action': 'delete'}})
+    if _file_watching_enabled(ws_id):
+        _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': file_path, 'action': 'delete'}})
     return jsonify({'ok': True, 'data': {'deleted': True}})
 
 
@@ -329,7 +338,8 @@ def api_upload(ws_id):
     file = request.files['file']
     subdir = request.form.get('path', 'files')
     result = fm.save_upload(ws_id, file.filename, file.read(), subdir)
-    _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': result['path'], 'action': 'write'}})
+    if _file_watching_enabled(ws_id):
+        _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': result['path'], 'action': 'write'}})
     return jsonify({'ok': True, 'data': result}), 201
 
 
