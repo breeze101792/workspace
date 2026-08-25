@@ -74,21 +74,23 @@
       <div class="menu-item" data-action="upload">Upload File</div>
     </div>
 
+    <!-- New Window Menu (outside #dock: its backdrop-filter would clip a fixed child) -->
+    <div id="new-window-menu">
+      <div class="menu-item" data-wnd-type="markdown">Markdown</div>
+      <div class="menu-item" data-wnd-type="text">Text</div>
+      <div class="menu-item" data-wnd-type="html">HTML</div>
+      <div class="menu-item" data-wnd-type="image">Image Viewer</div>
+      <div class="menu-item" data-wnd-type="explorer">File Explorer</div>
+      <div class="menu-item" data-wnd-type="search">Search</div>
+      <div class="menu-item" data-wnd-type="tabbed">Tabbed Group</div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
     <!-- Dock -->
     <div id="dock">
       <button class="dock-btn" id="btn-new-window" title="New Window">+</button>
-      <div id="new-window-menu">
-        <div class="menu-item" data-wnd-type="markdown">Markdown</div>
-        <div class="menu-item" data-wnd-type="text">Text</div>
-        <div class="menu-item" data-wnd-type="html">HTML</div>
-        <div class="menu-item" data-wnd-type="image">Image Viewer</div>
-        <div class="menu-item" data-wnd-type="explorer">File Explorer</div>
-        <div class="menu-item" data-wnd-type="search">Search</div>
-        <div class="menu-item" data-wnd-type="tabbed">Tabbed Group</div>
-      </div>
       <input type="file" id="file-upload-input" style="display:none">
       <button class="dock-btn" id="btn-upload" title="Upload">↑</button>
       <button class="dock-btn" id="btn-search" title="Search">⌕</button>
