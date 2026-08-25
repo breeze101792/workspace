@@ -54,6 +54,23 @@ def write_file(ws_id: str, file_path: str, content: str) -> dict | None:
     return {"path": file_path, "size": resolved.stat().st_size}
 
 
+def rename_file(ws_id: str, old_path: str, new_path: str) -> dict | None:
+    """Rename/move a file or directory inside the workspace.
+
+    Returns None when either path is invalid or the source is missing.
+    Raises FileExistsError when the target already exists.
+    """
+    old = _resolve_path(ws_id, old_path)
+    new = _resolve_path(ws_id, new_path)
+    if not old or not new or not old.exists():
+        return None
+    if new.exists():
+        raise FileExistsError(new_path)
+    new.parent.mkdir(parents=True, exist_ok=True)
+    old.rename(new)
+    return {"oldPath": old_path, "path": new_path}
+
+
 def delete_file(ws_id: str, file_path: str) -> bool:
     resolved = _resolve_path(ws_id, file_path)
     if not resolved or not resolved.exists():

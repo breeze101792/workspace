@@ -192,6 +192,37 @@ def test_window_open_broadcasts_added(server_with_ws):
     ws2.close()
 
 
+def test_window_rename_broadcasts_renamed(server_with_ws):
+    ws_url, ws_id, _ = server_with_ws
+    ws1 = websocket.create_connection(ws_url, timeout=5)
+    ws2 = websocket.create_connection(ws_url, timeout=5)
+    ws1.recv()
+    ws2.recv()
+
+    ws1.send(json.dumps({"type": "window:open", "data": {"id": "wnd_abc", "type": "markdown", "title": "untitled.md", "file": "markdown/untitled.md"}}))
+    msg = json.loads(ws2.recv())
+    assert msg['type'] == 'window:added'
+
+    ws1.send(json.dumps({"type": "window:rename", "data": {"id": "wnd_abc", "title": "notes.md", "file": "markdown/notes.md"}}))
+    msg = json.loads(ws2.recv())
+    assert msg['type'] == 'window:renamed'
+    assert msg['data']['id'] == 'wnd_abc'
+    assert msg['data']['title'] == 'notes.md'
+    assert msg['data']['file'] == 'markdown/notes.md'
+
+    # Persisted: reconnect and check stored window state
+    ws1.close()
+    ws2.close()
+    ws3 = websocket.create_connection(ws_url, timeout=5)
+    try:
+        state = json.loads(ws3.recv())
+        win = next(w for w in state['data']['windows'] if w['id'] == 'wnd_abc')
+        assert win['title'] == 'notes.md'
+        assert win['file'] == 'markdown/notes.md'
+    finally:
+        ws3.close()
+
+
 def test_window_close_broadcasts_removed(server_with_ws):
     ws_url, ws_id, _ = server_with_ws
     ws1 = websocket.create_connection(ws_url, timeout=5)

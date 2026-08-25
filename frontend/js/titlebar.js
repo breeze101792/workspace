@@ -77,5 +77,43 @@ export function createTitleBar(win) {
 
   el.appendChild(title);
   el.appendChild(buttons);
+
+  // Right-click context menu on the title bar
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    focusWindow(win.id);
+    emit('window:contextmenu', { id: win.id, x: e.clientX, y: e.clientY });
+  });
+
   return el;
+}
+
+export function startTitleRename(win, onCommit) {
+  const bar = document.querySelector(`#wnd-${win.id} .titlebar`);
+  const span = bar?.querySelector('.titlebar-text');
+  if (!span || bar.querySelector('.titlebar-rename-input')) return;
+
+  const input = document.createElement('input');
+  input.className = 'titlebar-rename-input';
+  input.type = 'text';
+  input.value = win.title;
+  let done = false;
+  const finish = (commit) => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim();
+    input.replaceWith(span);
+    if (commit && name && name !== win.title) onCommit(name);
+  };
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') finish(true);
+    if (e.key === 'Escape') finish(false);
+  });
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('pointerdown', (e) => e.stopPropagation());
+  span.replaceWith(input);
+  input.focus();
+  input.select();
 }

@@ -74,6 +74,16 @@
       <div class="menu-item" data-action="upload">Upload File</div>
     </div>
 
+    <!-- Window Context Menu (right-click a window titlebar) -->
+    <div id="window-context-menu" class="hidden">
+      <div class="menu-item" id="wcm-rename">Rename</div>
+      <div class="menu-separator"></div>
+      <div class="menu-item" id="wcm-minimize">Minimize</div>
+      <div class="menu-item" id="wcm-maximize">Maximize</div>
+      <div class="menu-separator"></div>
+      <div class="menu-item" id="wcm-close">Close</div>
+    </div>
+
     <!-- New Window Menu (outside #dock: its backdrop-filter would clip a fixed child) -->
     <div id="new-window-menu">
       <div class="menu-item" data-wnd-type="markdown">Markdown</div>

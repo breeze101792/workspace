@@ -175,6 +175,18 @@ def ws(ws):
                 wm.update_workspace(ws_id, {'windows': ws_state['windows']})
                 _broadcast(ws_id, {'type': 'window:added', 'data': new_window}, sid)
 
+            elif type_ == 'window:rename':
+                for w in ws_state['windows']:
+                    if w['id'] == data.get('id'):
+                        if data.get('title'):
+                            w['title'] = data['title']
+                        if data.get('file'):
+                            w['file'] = data['file']
+                            w['filePath'] = data['file']
+                        break
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:renamed', 'data': {'id': data['id'], 'title': data.get('title'), 'file': data.get('file')}}, sid)
+
             elif type_ == 'workspace:updateSettings':
                 settings = ws_state.get('settings', {})
                 settings.update(data)
@@ -324,6 +336,25 @@ def api_write_file(ws_id, file_path):
         return jsonify({'ok': False, 'error': 'Invalid path'}), 422
     if _file_watching_enabled(ws_id):
         _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': file_path, 'action': 'write'}})
+    return jsonify({'ok': True, 'data': result})
+
+
+@app.route('/api/workspaces/<ws_id>/files/<path:file_path>', methods=['PATCH'])
+def api_rename_file(ws_id, file_path):
+    data = request.get_json(silent=True) or {}
+    new_path = data.get('newPath', '')
+    if not new_path:
+        return jsonify({'ok': False, 'error': 'newPath is required'}), 400
+    try:
+        result = fm.rename_file(ws_id, file_path, new_path)
+    except FileExistsError:
+        return jsonify({'ok': False, 'error': 'Target already exists'}), 409
+    except OSError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 422
+    if not result:
+        return jsonify({'ok': False, 'error': 'File not found'}), 404
+    if _file_watching_enabled(ws_id):
+        _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': new_path, 'oldPath': file_path, 'action': 'rename'}})
     return jsonify({'ok': True, 'data': result})
 
 

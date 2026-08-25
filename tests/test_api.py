@@ -203,6 +203,61 @@ def test_upload_malicious_path_returns_422(client):
     assert body['error'] == 'Invalid path'
 
 
+def test_rename_file(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    client.put(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'content': 'data'})
+    res = client.patch(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'newPath': 'markdown/y.md'})
+    assert res.status_code == 200
+    body = res.get_json()
+    assert body['ok'] is True
+    assert body['data']['path'] == 'markdown/y.md'
+    assert body['data']['oldPath'] == 'markdown/x.md'
+    assert client.get(f'/api/workspaces/{ws_id}/files/markdown/x.md').status_code == 404
+    moved = client.get(f'/api/workspaces/{ws_id}/files/markdown/y.md')
+    assert moved.status_code == 200
+    assert moved.get_json()['data']['content'] == 'data'
+
+
+def test_rename_file_to_other_directory(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    client.put(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'content': 'data'})
+    res = client.patch(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'newPath': 'html/x.md'})
+    assert res.status_code == 200
+    assert client.get(f'/api/workspaces/{ws_id}/files/html/x.md').status_code == 200
+
+
+def test_rename_file_target_exists_409(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    client.put(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'content': 'a'})
+    client.put(f'/api/workspaces/{ws_id}/files/markdown/y.md', json={'content': 'b'})
+    res = client.patch(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'newPath': 'markdown/y.md'})
+    assert res.status_code == 409
+    assert res.get_json()['ok'] is False
+    # Source untouched
+    assert client.get(f'/api/workspaces/{ws_id}/files/markdown/x.md').status_code == 200
+
+
+def test_rename_file_missing_source_404(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    res = client.patch(f'/api/workspaces/{ws_id}/files/markdown/nope.md', json={'newPath': 'markdown/y.md'})
+    assert res.status_code == 404
+
+
+def test_rename_file_missing_newpath_400(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    client.put(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'content': 'a'})
+    res = client.patch(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={})
+    assert res.status_code == 400
+    assert res.get_json()['ok'] is False
+
+
+def test_rename_file_traversal_404(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    client.put(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'content': 'a'})
+    res = client.patch(f'/api/workspaces/{ws_id}/files/markdown/x.md', json={'newPath': '../escape.md'})
+    assert res.status_code == 404
+
+
 def test_404_error_envelope(client):
     res = client.get('/this/does/not/exist')
     assert res.status_code == 404

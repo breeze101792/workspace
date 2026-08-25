@@ -8,6 +8,7 @@ import {
   toggleMinimize, toggleMaximize, renderAllWindows, getWindows, updateWindowPos, updateWindowSize
 } from './window-manager.js';
 import { renderWindowContent } from './window-factory.js';
+import { startTitleRename } from './titlebar.js';
 import { pushSnapshot, undo as histUndo, redo as histRedo } from './history.js';
 
 let currentWsId = null;
@@ -32,6 +33,7 @@ function showWelcome(show) {
 // --- Context menu ---
 
 function showContextMenu(x, y) {
+  hideWindowContextMenu();
   const menu = document.getElementById('context-menu');
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
@@ -40,6 +42,28 @@ function showContextMenu(x, y) {
 
 function hideContextMenu() {
   document.getElementById('context-menu').classList.add('hidden');
+}
+
+// --- Window context menu ---
+
+let windowMenuTargetId = null;
+
+function showWindowContextMenu(x, y, win) {
+  hideContextMenu();
+  windowMenuTargetId = win.id;
+  document.getElementById('wcm-minimize').textContent = win.minimized ? 'Restore' : 'Minimize';
+  document.getElementById('wcm-maximize').textContent = win.maximized ? 'Restore Size' : 'Maximize';
+  const menu = document.getElementById('window-context-menu');
+  menu.classList.remove('hidden');
+  const rect = menu.getBoundingClientRect();
+  const left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8));
+  const top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8));
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+}
+
+function hideWindowContextMenu() {
+  document.getElementById('window-context-menu').classList.add('hidden');
 }
 
 // --- Zoom controls ---
@@ -158,10 +182,41 @@ function setupUI() {
     });
   });
 
+  // Window context menu actions
+  document.getElementById('wcm-rename').addEventListener('click', () => {
+    hideWindowContextMenu();
+    const win = getWindows().find(w => w.id === windowMenuTargetId);
+    if (win) startTitleRename(win, (name) => commitWindowRename(win, name));
+  });
+  document.getElementById('wcm-minimize').addEventListener('click', () => {
+    hideWindowContextMenu();
+    const win = getWindows().find(w => w.id === windowMenuTargetId);
+    if (!win) return;
+    toggleMinimize(win.id);
+    send('window:minimize', { id: win.id, minimized: win.minimized });
+    if (!win.minimized) focusWindow(win.id);
+  });
+  document.getElementById('wcm-maximize').addEventListener('click', () => {
+    hideWindowContextMenu();
+    const win = getWindows().find(w => w.id === windowMenuTargetId);
+    if (!win) return;
+    toggleMaximize(win.id);
+    send('window:maximize', { id: win.id, maximized: win.maximized });
+  });
+  document.getElementById('wcm-close').addEventListener('click', () => {
+    hideWindowContextMenu();
+    if (!windowMenuTargetId) return;
+    removeWindow(windowMenuTargetId);
+    send('window:close', { id: windowMenuTargetId });
+  });
+
   // Hide context menu on click outside
   document.addEventListener('click', (e) => {
     if (!document.getElementById('context-menu').contains(e.target)) {
       hideContextMenu();
+    }
+    if (!document.getElementById('window-context-menu').contains(e.target)) {
+      hideWindowContextMenu();
     }
   });
 
@@ -216,6 +271,10 @@ function setupUI() {
     removeWindow(id);
     send('window:close', { id });
   });
+  on('window:contextmenu', (data) => {
+    const win = getWindows().find(w => w.id === data.id);
+    if (win) showWindowContextMenu(data.x, data.y, win);
+  });
 
   // Canvas events
   on('canvas:contextmenu', (data) => showContextMenu(data.x, data.y));
@@ -256,6 +315,18 @@ function setupUI() {
     if (el) { el.style.width = data.width + 'px'; el.style.height = data.height + 'px'; }
   });
   on('window:focused', (data) => focusWindow(data.id));
+  on('window:renamed', (data) => {
+    const w = getWindows().find(ww => ww.id === data.id);
+    if (!w) return;
+    if (data.title) w.title = data.title;
+    if (data.file) {
+      w.file = data.file;
+      w.filePath = data.file;
+      renderWindowContent(w);
+    }
+    updateTitleBarText(data.id, w.title);
+    renderDock();
+  });
   on('window:minimized', (data) => toggleMinimize(data.id, data.minimized));
   on('window:maximized', (data) => toggleMaximize(data.id, data.maximized));
   on('window:removed', (data) => removeWindow(data.id));
@@ -420,9 +491,10 @@ function handleKeyboard(e) {
     return;
   }
 
-  // Escape — close context menu and welcome
+  // Escape — close context menus
   if (e.key === 'Escape') {
     hideContextMenu();
+    hideWindowContextMenu();
     return;
   }
 
@@ -541,6 +613,42 @@ function showCreateWorkspace() {
 
 function hideModal() {
   document.getElementById('modal-overlay').classList.remove('visible');
+}
+
+function updateTitleBarText(id, title) {
+  const span = document.querySelector(`#wnd-${id} .titlebar-text`);
+  if (span) span.textContent = title;
+}
+
+async function commitWindowRename(win, name) {
+  if (!win.file) {
+    if (name === win.title) return;
+    win.title = name;
+    send('window:rename', { id: win.id, title: name });
+    updateTitleBarText(win.id, win.title);
+    renderDock();
+    return;
+  }
+  const slash = win.file.lastIndexOf('/');
+  const dir = slash >= 0 ? win.file.slice(0, slash + 1) : '';
+  const dot = win.file.lastIndexOf('.');
+  const oldExt = dot > slash ? win.file.slice(dot) : '';
+  const fileName = name.includes('.') ? name : name + oldExt;
+  const newPath = dir + fileName;
+  if (newPath === win.file) return;
+  const res = await api.patch(`/api/workspaces/${win._wsId}/files/${win.file}`, { newPath });
+  if (!res.ok) {
+    showToast('Rename failed: ' + (res.error || 'unknown error'), 'error');
+    return;
+  }
+  win.file = newPath;
+  win.filePath = newPath;
+  win.title = fileName;
+  send('window:rename', { id: win.id, title: fileName, file: newPath });
+  updateTitleBarText(win.id, fileName);
+  renderWindowContent(win);
+  renderDock();
+  showToast('Renamed to ' + fileName, 'success');
 }
 
 async function handleNewWindow(type, overrides = {}) {

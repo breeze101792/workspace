@@ -67,6 +67,21 @@
   cursor: grabbing;
 }
 
+.titlebar-rename-input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-bright);
+  font-size: var(--fs-sm);
+  font-family: var(--font-ui);
+  outline: none;
+  user-select: text;
+}
+
 .window-focused .titlebar-text {
   color: var(--text-bright);
 }

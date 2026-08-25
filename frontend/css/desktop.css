@@ -246,6 +246,7 @@
 
 /* Menus — shared grammar (context menu, dropdowns, ws-list, new-window menu) */
 #context-menu,
+#window-context-menu,
 .dropdown-menu,
 #ws-list,
 #new-window-menu {
@@ -258,6 +259,7 @@
 }
 
 #context-menu .menu-item,
+#window-context-menu .menu-item,
 .dropdown-menu .menu-item,
 #new-window-menu .menu-item {
   padding: 7px var(--space-3);
@@ -270,6 +272,7 @@
 }
 
 #context-menu .menu-item:hover,
+#window-context-menu .menu-item:hover,
 .dropdown-menu .menu-item:hover,
 #new-window-menu .menu-item:hover {
   background: var(--accent-dim);
@@ -287,7 +290,8 @@
   margin: var(--space-1) var(--space-2);
 }
 
-#context-menu {
+#context-menu,
+#window-context-menu {
   position: fixed;
   min-width: 170px;
   z-index: var(--z-menu);

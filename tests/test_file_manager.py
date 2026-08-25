@@ -29,6 +29,53 @@ def test_read_nonexistent_file_returns_none():
     assert fm.read_file(ws['id'], 'markdown/missing.md') is None
 
 
+def test_rename_file_moves_content():
+    ws = wm.create_workspace("FM")
+    fm.write_file(ws['id'], 'markdown/note.md', "# Hello\n")
+    result = fm.rename_file(ws['id'], 'markdown/note.md', 'markdown/renamed.md')
+    assert result == {'oldPath': 'markdown/note.md', 'path': 'markdown/renamed.md'}
+    assert fm.read_file(ws['id'], 'markdown/note.md') is None
+    assert fm.read_file(ws['id'], 'markdown/renamed.md')['content'] == "# Hello\n"
+
+
+def test_rename_file_into_new_directory():
+    ws = wm.create_workspace("FM")
+    fm.write_file(ws['id'], 'note.md', "data")
+    assert fm.rename_file(ws['id'], 'note.md', 'deep/nested/note.md') is not None
+    assert fm.read_file(ws['id'], 'deep/nested/note.md')['content'] == "data"
+
+
+def test_rename_directory():
+    ws = wm.create_workspace("FM")
+    fm.write_file(ws['id'], 'old/inner/file.txt', "data")
+    assert fm.rename_file(ws['id'], 'old', 'new') is not None
+    assert fm.read_file(ws['id'], 'new/inner/file.txt')['content'] == "data"
+
+
+def test_rename_file_onto_existing_target_raises():
+    import pytest
+    ws = wm.create_workspace("FM")
+    fm.write_file(ws['id'], 'a.md', "a")
+    fm.write_file(ws['id'], 'b.md', "b")
+    with pytest.raises(FileExistsError):
+        fm.rename_file(ws['id'], 'a.md', 'b.md')
+    # Both untouched
+    assert fm.read_file(ws['id'], 'a.md')['content'] == "a"
+    assert fm.read_file(ws['id'], 'b.md')['content'] == "b"
+
+
+def test_rename_file_missing_source_returns_none():
+    ws = wm.create_workspace("FM")
+    assert fm.rename_file(ws['id'], 'nope.md', 'other.md') is None
+
+
+def test_rename_file_traversal_returns_none():
+    ws = wm.create_workspace("FM")
+    fm.write_file(ws['id'], 'a.md', "a")
+    assert fm.rename_file(ws['id'], 'a.md', '../escape.md') is None
+    assert fm.rename_file(ws['id'], '../a.md', 'b.md') is None
+
+
 def test_write_invalid_path_returns_none():
     ws = wm.create_workspace("FM")
     result = fm.write_file(ws['id'], '../escape.txt', "x")
