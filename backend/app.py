@@ -76,6 +76,14 @@ def serve_css(path):
     return _serve_static(str(FRONTEND_DIR / 'css' / path))
 
 
+# --- Agent guide ---
+
+@app.route('/agent.md')
+def agent_md():
+    """Serve the static agent guide (repo root agent.md)."""
+    return _serve_static(str(FRONTEND_DIR.parent / 'agent.md'))
+
+
 # --- WebSocket ---
 
 @sock.route('/ws')

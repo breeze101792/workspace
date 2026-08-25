@@ -8,6 +8,12 @@
 | WebSocket | Real-time window state sync | Same server (flask-sock, `/ws`) |
 | MCP (SSE) | AI agent access | 5011 (stdio JSON-RPC fallback) |
 
+## Agent Guide
+
+`GET /agent.md` serves the static guide file `agent.md` from the repo root.
+It documents all three transports, the REST endpoints, the MCP tools, and the
+WebSocket protocol for AI agents.
+
 ## Response Envelope
 
 Every HTTP response uses a consistent shape:
