@@ -1,10 +1,19 @@
-import { on, emit } from './state.js';
+import { emit } from './state.js';
 import { createTitleBar } from './titlebar.js';
 import { createResizeHandle } from './resize.js';
 import { renderWindowContent } from './window-factory.js';
 
 let windows = [];
 let zCounter = 10;
+
+function clampToCanvas(x, y, w, h) {
+  const container = document.getElementById('canvas-container');
+  if (!container) return { x, y };
+  const rect = container.getBoundingClientRect();
+  const maxX = Math.max(0, rect.width - w);
+  const maxY = Math.max(0, rect.height - h);
+  return { x: Math.max(0, Math.min(x, maxX)), y: Math.max(0, Math.min(y, maxY)) };
+}
 
 export function getWindows() { return windows; }
 
@@ -128,12 +137,7 @@ export function renderWindow(win) {
   content.id = `wnd-${win.id}-content`;
   el.appendChild(content);
 
-  const resize = createResizeHandle(win.id);
-  if (resize instanceof DocumentFragment) {
-    el.appendChild(resize);
-  } else {
-    el.appendChild(resize);
-  }
+  el.appendChild(createResizeHandle(win.id));
 
   el.addEventListener('mousedown', () => {
     if (!el.classList.contains('window-focused')) {

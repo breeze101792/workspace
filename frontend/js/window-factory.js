@@ -18,15 +18,16 @@ export function renderWindowContent(win) {
 async function _loadFile(wsId, filePath) {
   if (!wsId || !filePath) return null;
   const res = await api.get(`/api/workspaces/${wsId}/files/${filePath}`);
-  if (res.ok) return res.data.content;
-  return null;
+  // Distinguish "missing" (null) from "empty file" ('')
+  if (!res.ok) return null;
+  return res.data.content ?? '';
 }
 
 // Markdown
 registerWindowType('markdown', async (win, el) => {
   el.innerHTML = '<div class="wnd-loading">Loading...</div>';
   const content = await _loadFile(win._wsId, win.file);
-  if (!content) { el.innerHTML = '<div class="wnd-empty">No file</div>'; return; }
+  if (content === null) { el.innerHTML = '<div class="wnd-empty">No file</div>'; return; }
 
   el.innerHTML = `<div class="markdown-body">${window.marked ? window.marked.parse(content) : `<pre>${content}</pre>`}</div>`;
   if (window.hljs) {
@@ -71,7 +72,7 @@ async function _appendToFile(wsId, filePath, text) {
 registerWindowType('text', async (win, el) => {
   el.innerHTML = '<div class="wnd-loading">Loading...</div>';
   const content = await _loadFile(win._wsId, win.file);
-  if (!content) { el.innerHTML = '<div class="wnd-empty">No file</div>'; return; }
+  if (content === null) { el.innerHTML = '<div class="wnd-empty">No file</div>'; return; }
   el.innerHTML = `<pre class="text-body">${content}</pre>`;
 });
 
@@ -79,7 +80,7 @@ registerWindowType('text', async (win, el) => {
 registerWindowType('html', async (win, el) => {
   el.innerHTML = '<div class="wnd-loading">Loading...</div>';
   const content = await _loadFile(win._wsId, win.file);
-  if (!content) { el.innerHTML = '<div class="wnd-empty">No file</div>'; return; }
+  if (content === null) { el.innerHTML = '<div class="wnd-empty">No file</div>'; return; }
   const iframe = document.createElement('iframe');
   iframe.className = 'html-iframe';
   iframe.sandbox = 'allow-same-origin';
@@ -100,7 +101,9 @@ registerWindowType('image', (win, el) => {
 // File Explorer
 registerWindowType('explorer', (win, el) => {
   el.innerHTML = '<div class="wnd-loading">Loading...</div>';
-  _renderExplorer(win._wsId, el, '');
+  // Restore last visited directory (kept in metadata so live refresh stays put)
+  const dir = (win.metadata && win.metadata.dir) || '';
+  _renderExplorer(win, el, dir);
 });
 
 // Tabbed container - groups multiple windows into tabs
@@ -159,7 +162,7 @@ registerWindowType('search', (win, el) => {
     results.innerHTML = res.data.map(m =>
       `<div class="search-result" data-path="${m.path}" style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer">
         <div style="color:var(--accent);font-size:11px">${m.path}:${m.line}</div>
-        <div style="color:var(---text);margin-top:2px">${m.text.replace(/</g, '&lt;')}</div>
+        <div style="color:var(--text);margin-top:2px">${m.text.replace(/</g, '&lt;')}</div>
       </div>`
     ).join('');
     results.querySelectorAll('.search-result').forEach(item => {
@@ -178,7 +181,8 @@ registerWindowType('search', (win, el) => {
   input.focus();
 });
 
-async function _renderExplorer(wsId, el, dir) {
+async function _renderExplorer(win, el, dir) {
+  const wsId = win._wsId;
   const res = await api.get(`/api/workspaces/${wsId}/files?dir=${encodeURIComponent(dir)}`);
   if (!res.ok) { el.innerHTML = '<div class="wnd-empty">Error loading files</div>'; return; }
 
@@ -206,7 +210,9 @@ async function _renderExplorer(wsId, el, dir) {
       const type = item.dataset.type;
       const name = item.dataset.name;
       if (type === 'directory') {
-        _renderExplorer(wsId, el, path);
+        if (!win.metadata) win.metadata = {};
+        win.metadata.dir = path;
+        _renderExplorer(win, el, path);
         return;
       }
       if (!path || type !== 'file') return;

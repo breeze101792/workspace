@@ -1,7 +1,7 @@
 // Touch gesture handling for canvas pan and zoom
 import { emit } from './state.js';
+import { getViewport, setViewport } from './canvas.js';
 
-let panX = 0, panY = 0, zoom = 1;
 let canvas;
 let touches = new Map();
 let lastPinchDist = 0;
@@ -26,6 +26,7 @@ export function initTouch() {
 
   canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
+    const { x: panX, y: panY, zoom } = getViewport();
     for (const t of e.changedTouches) {
       touches.set(t.identifier, { x: t.clientX, y: t.clientY });
     }
@@ -34,18 +35,16 @@ export function initTouch() {
       const dist = Math.hypot(ts[0].x - ts[1].x, ts[0].y - ts[1].y);
       if (lastPinchDist > 0) {
         const delta = dist / lastPinchDist;
-        zoom = Math.max(0.25, Math.min(4, zoom * delta));
-        updateTransform();
-        emit('canvas:zoom', zoom);
+        const newZoom = Math.max(0.25, Math.min(4, zoom * delta));
+        setViewport(panX, panY, newZoom);
+        emit('canvas:zoom', newZoom);
       }
       lastPinchDist = dist;
     } else if (touches.size === 1) {
       const t = touches.values().next().value;
       const dx = t.x - lastPanX;
       const dy = t.y - lastPanY;
-      panX += dx / zoom;
-      panY += dy / zoom;
-      updateTransform();
+      setViewport(panX + dx / zoom, panY + dy / zoom, zoom);
       lastPanX = t.x;
       lastPanY = t.y;
     }
@@ -57,12 +56,8 @@ export function initTouch() {
     }
     if (touches.size < 2) lastPinchDist = 0;
     if (touches.size === 0) {
+      const { x: panX, y: panY, zoom } = getViewport();
       emit('canvas:viewport-changed', { zoom, panX, panY });
     }
   });
-}
-
-function updateTransform() {
-  canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
-  canvas.style.transformOrigin = '0 0';
 }

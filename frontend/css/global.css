@@ -11,7 +11,8 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--fs-md);
+  line-height: var(--lh-base);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -23,11 +24,31 @@ html, body {
   position: relative;
 }
 
+/* Keyboard focus ring — visible only for keyboard navigation */
+button:focus-visible,
+.menu-item:focus-visible,
+.explorer-item:focus-visible,
+.tab:focus-visible,
+input:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-meta); }
 
 /* Selection */
-::selection { background: rgba(0, 212, 255, 0.3); }
+::selection { background: var(--accent-dim); color: var(--text-bright); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

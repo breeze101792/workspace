@@ -4,9 +4,9 @@
 
 | Protocol | Purpose | Port |
 |----------|---------|------|
-| HTTP REST | File CRUD, workspace management | 3001 (configurable) |
-| WebSocket | Real-time window state sync | Same server (upgrade) |
-| MCP (stdio) | AI agent access | Subprocess stdin/stdout |
+| HTTP REST | File CRUD, workspace management | 5010 (override with `PORT` env) |
+| WebSocket | Real-time window state sync | Same server (flask-sock, `/ws`) |
+| MCP (SSE) | AI agent access | 5011 (stdio JSON-RPC fallback) |
 
 ## Response Envelope
 
@@ -213,7 +213,7 @@ Response:
 ### Connection
 
 ```
-ws://localhost:3001/ws?workspace=ws_abc123
+ws://localhost:5010/ws?workspace=ws_abc123
 ```
 
 ### Message Format

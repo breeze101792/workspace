@@ -20,6 +20,7 @@ export function createTitleBar(win) {
     startY = e.clientY;
     origX = win.x;
     origY = win.y;
+    document.getElementById(`wnd-${win.id}`)?.classList.add('window-dragging');
     title.setPointerCapture(e.pointerId);
   });
   title.addEventListener('pointermove', (e) => {
@@ -31,9 +32,10 @@ export function createTitleBar(win) {
   title.addEventListener('pointerup', () => {
     if (dragging) {
       dragging = false;
+      document.getElementById(`wnd-${win.id}`)?.classList.remove('window-dragging');
       let { x, y } = win;
-      // Try snap to other windows first
-      const snap = snapToOthers(x, y);
+      // Try snap to other windows first (excluding the dragged window itself)
+      const snap = snapToOthers(x, y, 8, win.id, win.width, win.height);
       x = snap.x;
       y = snap.y;
       // Then snap to grid if enabled

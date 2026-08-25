@@ -1,5 +1,6 @@
 from backend import workspace_manager as wm
 from backend import file_manager as fm
+from backend import safe_fs
 
 
 def test_write_and_read_text_file():
@@ -44,6 +45,21 @@ def test_write_path_traversal_returns_none():
     assert fm.write_file(ws['id'], '../../etc/passwd', "x") is None
 
 
+def test_sibling_prefix_traversal_blocked(tmp_path):
+    """A sibling dir sharing a string prefix with the root must not pass containment."""
+    ws = wm.create_workspace("Sib")
+    evil_dir = safe_fs.workspace_path(ws['id'] + '-evil')
+    evil_dir.mkdir(parents=True, exist_ok=True)
+    (evil_dir / 'secret.md').write_text("stolen", encoding='utf-8')
+
+    evil_rel = f"../{ws['id']}-evil/secret.md"
+    assert fm._resolve_path(ws['id'], evil_rel) is None
+    assert fm.read_file(ws['id'], evil_rel) is None
+    assert fm.write_file(ws['id'], f"../{ws['id']}-evil/pwned.md", "x") is None
+    assert (evil_dir / 'pwned.md').exists() is False
+    assert (evil_dir / 'secret.md').read_text(encoding='utf-8') == "stolen"
+
+
 def test_force_text_for_binary_extension():
     ws = wm.create_workspace("FM")
     fm.write_file(ws['id'], 'text/data.bin', "binary-looking but text")
@@ -73,6 +89,13 @@ def test_delete_empty_directory():
     fm.write_file(ws['id'], 'markdown/sub/file.md', "x")
     fm.delete_file(ws['id'], 'markdown/sub/file.md')
     assert fm.delete_file(ws['id'], 'markdown/sub') is True
+
+
+def test_delete_nonempty_directory_returns_false():
+    ws = wm.create_workspace("FM")
+    fm.write_file(ws['id'], 'markdown/sub/file.md', "x")
+    assert fm.delete_file(ws['id'], 'markdown/sub') is False
+    assert fm.read_file(ws['id'], 'markdown/sub/file.md') is not None
 
 
 def test_list_files_root():
@@ -142,6 +165,16 @@ def test_save_upload_invalid_path_raises():
     import pytest
     with pytest.raises(ValueError):
         fm.save_upload(ws['id'], 'x.txt', b'data', '../escape')
+
+
+def test_read_invalid_utf8_raises_value_error():
+    import pytest
+    ws = wm.create_workspace("FM")
+    target = safe_fs.workspace_path(ws['id']) / 'text' / 'bad.txt'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b'\xff\xfe\x00')
+    with pytest.raises(ValueError, match='not valid UTF-8'):
+        fm.read_file(ws['id'], 'text/bad.txt')
 
 
 def test_mime_detection_for_various_extensions():

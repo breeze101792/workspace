@@ -398,3 +398,23 @@ def test_message_has_seq_field(server_with_ws):
     assert isinstance(init['seq'], int)
     assert init['seq'] >= 1
     ws1.close()
+
+
+def test_http_workspace_update_broadcasts_workspace_updated(server_with_ws):
+    """PUT /api/workspaces/<id> must notify connected browsers via workspace:updated."""
+    ws_url, ws_id, port = server_with_ws
+    ws1 = websocket.create_connection(ws_url, timeout=5)
+    ws2 = websocket.create_connection(ws_url, timeout=5)
+    init = json.loads(ws1.recv())
+    ws2.recv()  # state:sync for ws2
+
+    _http_put(port, f'/api/workspaces/{ws_id}', {'name': 'Renamed'})
+
+    msg = json.loads(ws2.recv())
+    assert msg['type'] == 'workspace:updated'
+    assert msg['workspace'] == ws_id
+    assert msg['seq'] > init['seq']
+    assert msg['data']['name'] == 'Renamed'
+
+    ws1.close()
+    ws2.close()

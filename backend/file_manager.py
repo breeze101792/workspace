@@ -21,7 +21,9 @@ TEXT_MIME_MAP = {
 def _resolve_path(ws_id: str, user_path: str) -> Path | None:
     root = safe_fs.workspace_path(ws_id).resolve()
     resolved = (root / user_path).resolve()
-    if not str(resolved).startswith(str(root)):
+    try:
+        resolved.relative_to(root)
+    except ValueError:
         return None
     return resolved
 
@@ -32,7 +34,10 @@ def read_file(ws_id: str, file_path: str, force_text: bool = False) -> dict | No
         return None
     ext = resolved.suffix.lower()
     if ext in TEXT_EXTENSIONS or force_text:
-        content = resolved.read_text(encoding='utf-8')
+        try:
+            content = resolved.read_text(encoding='utf-8')
+        except UnicodeDecodeError:
+            raise ValueError('file is not valid UTF-8 text')
         mime = TEXT_MIME_MAP.get(ext, 'text/plain')
         return {"content": content, "mime": mime, "binary": False}
     else:
@@ -54,7 +59,10 @@ def delete_file(ws_id: str, file_path: str) -> bool:
     if not resolved or not resolved.exists():
         return False
     if resolved.is_dir():
-        resolved.rmdir()
+        try:
+            resolved.rmdir()
+        except OSError:
+            return False
     else:
         resolved.unlink()
     return True

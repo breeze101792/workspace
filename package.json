@@ -1,0 +1,14 @@
+{
+  "name": "workspace-frontend-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Frontend test suite for the AI-native Workspace platform (vanilla JS, no build step).",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0",
+    "vitest": "^2.1.1"
+  }
+}

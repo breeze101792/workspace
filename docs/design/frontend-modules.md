@@ -1,5 +1,10 @@
 # Frontend Module Design
 
+> **Historical document.** This was written for an earlier React+TS plan.
+> The shipped frontend is vanilla JS ES modules (no build step) — see
+> `frontend/js/` and `docs/design/ui-refresh.md` for the current system.
+> Kept for the module-decomposition rationale, which still applies.
+
 ## Technology
 
 - **Framework**: React 18+ with TypeScript

@@ -34,10 +34,6 @@ function makeHandle(winId, type) {
     if (type === 'se' || type === 'e') w = Math.max(240, origW + dw);
     if (type === 'se' || type === 's') h = Math.max(160, origH + dh);
     updateWindowSize(winId, w, h);
-
-    if (type === 's') {
-      updateWindowSize(winId, origW, h);
-    }
   });
 
   el.addEventListener('pointerup', () => {

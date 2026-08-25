@@ -135,6 +135,41 @@ def test_ws_cleanup_code_runs():
     assert len(app_module.ws_rooms.get(ws_id, set())) == 0
 
 
+# --- app.py WS handler: cleanup must run even when the loop raises ---
+
+def test_ws_cleanup_runs_on_handler_exception():
+    """If json.loads or a handler raises mid-loop, connection state is still removed."""
+    from backend import app as app_module
+    from backend import workspace_manager as wm
+
+    ws_id = wm.create_workspace("Raise Cleanup")['id']
+
+    class FakeWS:
+        def __init__(self):
+            self.calls = 0
+            self.sent = []
+
+        def send(self, raw):
+            self.sent.append(raw)
+
+        def receive(self):
+            self.calls += 1
+            if self.calls == 1:
+                return '{not valid json'
+            return None
+
+    fake = FakeWS()
+    handler = app_module.app.view_functions['ws'].__wrapped__
+    with app_module.app.test_request_context(f'/ws?workspace={ws_id}'):
+        with pytest.raises(ValueError):
+            handler(fake)
+
+    assert fake.calls == 1
+    sid = id(fake)
+    assert sid not in app_module.ws_connected
+    assert sid not in app_module.ws_rooms.get(ws_id, set())
+
+
 # --- app.py line 286: 500 error handler ---
 
 def test_500_handler_returns_envelope():

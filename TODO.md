@@ -4,27 +4,8 @@
 
 ### Features
 - [ ] **External plugins** — The `WindowRegistry` is ready but plugin loading from `extensions/` directory is not implemented. V2.
-- [ ] **Auth** — Session-based auth with login page. Not needed for local-only V1, required for cloud deployment.
-- [ ] **Workspace import/export** — Zip/tar export or import from directory.
-- [ ] **File search** — Full-text search across workspace files.
-- [ ] **Drag-and-drop between windows** — e.g., drag image from explorer into markdown.
-- [ ] **Snap-to-grid / snap-to-window** — Alignment guides when dragging windows.
-- [ ] **Window tabbing** — Group multiple windows into tabs.
-- [ ] **Undo/redo** — For window positions and file edits.
-- [ ] **Conflict resolution** — What happens when two clients modify the same window simultaneously.
-
-### Polish
-- [ ] **Desktop wallpaper / custom background** — User-settable background.
-- [ ] **Keyboard shortcuts** — Cmd+W close, Cmd+N new window, etc.
-- [ ] **Touch support** — Touch gestures for mobile/tablet.
-
-### Infrastructure
-- [x] **Tests** — Unit tests for window manager state functions, integration tests for API, WebSocket sync tests.
-- [ ] **CLI tool** — A `workspace` CLI for workspace management from terminal.
-
-## Pending
-- [ ] **Electron/Tauri wrapper** — Native desktop app packaging.
-- [ ] **HTTPS / TLS** — For production/cloud use. Local V1 runs on HTTP.
+- [ ] **Drag-and-drop between windows** — e.g., drag image from explorer into markdown (drop inserts reference; full preview-in-drop pending).
+- [ ] **Window tabbing** — Group multiple windows into tabs (basic tabbed container exists; drag-to-tab pending).
 
 ### Window Types
 - [ ] **PDF Viewer** — requires pdf.js integration. Post-V1 once core stable.
@@ -33,3 +14,7 @@
 - [ ] **Browser/WebView** — V2+.
 - [ ] **Terminal** — requires xterm.js + backend PTY. V2+.
 - [ ] **Code Editor** — requires Monaco/CodeMirror integration. V2+.
+
+## Pending
+- [ ] **Electron/Tauri wrapper** — Native desktop app packaging.
+- [ ] **HTTPS / TLS** — For production/cloud use. Local V1 runs on HTTP.

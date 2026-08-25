@@ -7,6 +7,7 @@ import {
   setWindows, addWindow, removeWindow, focusWindow,
   toggleMinimize, toggleMaximize, renderAllWindows, getWindows, updateWindowPos, updateWindowSize
 } from './window-manager.js';
+import { renderWindowContent } from './window-factory.js';
 import { pushSnapshot, undo as histUndo, redo as histRedo } from './history.js';
 
 let currentWsId = null;
@@ -270,9 +271,7 @@ function setupUI() {
     if (window._workspaceSettings && window._workspaceSettings.watchFiles === false) return;
     getWindows().filter(w => w.type === 'explorer').forEach(w => {
       const content = document.getElementById(`wnd-${w.id}-content`);
-      if (content) {
-        import('./window-factory.js').then(m => m.renderWindowContent(w));
-      }
+      if (content) renderWindowContent(w);
     });
   });
 
@@ -544,17 +543,18 @@ function hideModal() {
   document.getElementById('modal-overlay').classList.remove('visible');
 }
 
-function handleNewWindow(type, overrides = {}) {
+async function handleNewWindow(type, overrides = {}) {
   const titles = { markdown: 'New Markdown', text: 'New Text', html: 'New HTML', image: 'Image Viewer', explorer: 'File Explorer', search: 'Search', tabbed: 'Tabbed Group' };
   const id = overrides.id || 'wnd_' + Math.random().toString(36).slice(2, 10);
   const x = overrides.x || (150 + Math.random() * 100);
   const y = overrides.y || (150 + Math.random() * 100);
 
-  if (type === 'explorer' || type === 'search' || type === 'tabbed' || (type === 'image' && overrides.file)) {
+  // Non-file-backed window types (image viewer without a file shows a placeholder)
+  if (type === 'explorer' || type === 'search' || type === 'tabbed' || type === 'image') {
     const win = { id, type, title: overrides.title || titles[type], x, y, width: 600, height: 400, zIndex: 100, minimized: false, maximized: false, file: overrides.file || null, filePath: overrides.file || null, metadata: overrides.metadata || {}, _wsId: currentWsId };
     addWindow(win);
     showWelcome(false);
-    if (type !== 'explorer' && type !== 'search' && type !== 'tabbed') send('window:open', { id, type, title: win.title, x, y, file: win.file });
+    if (overrides.file) send('window:open', { id, type, title: win.title, x, y, file: win.file });
     return;
   }
 
@@ -570,7 +570,7 @@ function handleNewWindow(type, overrides = {}) {
     html: '<!DOCTYPE html>\n<html>\n<head><title>Page</title></head>\n<body>\n  <h1>Hello</h1>\n</body>\n</html>\n',
   };
 
-  api.put(`/api/workspaces/${currentWsId}/files/${filePath}`, { content: templates[type] || '' });
+  await api.put(`/api/workspaces/${currentWsId}/files/${filePath}`, { content: templates[type] || '' });
 
   const win = { id, type, title: fileName, x, y, width: 600, height: 400, zIndex: 100, minimized: false, maximized: false, file: filePath, filePath, metadata: {}, _wsId: currentWsId };
   addWindow(win);

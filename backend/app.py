@@ -88,104 +88,106 @@ def ws(ws):
             'data': ws_state
         }))
 
-    while True:
-        raw = ws.receive()
-        if raw is None:
-            break  # pragma: no cover
-        msg = json.loads(raw)
-        type_ = msg.get('type', '')
-        data = msg.get('data', {})
+    try:
+        while True:
+            raw = ws.receive()
+            if raw is None:
+                break  # pragma: no cover
+            msg = json.loads(raw)
+            type_ = msg.get('type', '')
+            data = msg.get('data', {})
 
-        if type_ == 'connect':
-            continue
+            if type_ == 'connect':
+                continue
 
-        ws_state = wm.get_workspace(ws_id)
-        if not ws_state:
-            continue
+            ws_state = wm.get_workspace(ws_id)
+            if not ws_state:
+                continue
 
-        if type_ == 'window:move':
-            for w in ws_state['windows']:
-                if w['id'] == data.get('id'):
-                    w['x'] = data['x']
-                    w['y'] = data['y']
-                    break
-            wm.update_workspace(ws_id, {'windows': ws_state['windows']})
-            _broadcast(ws_id, {'type': 'window:moved', 'data': {'id': data['id'], 'x': data['x'], 'y': data['y']}}, sid)
+            if type_ == 'window:move':
+                for w in ws_state['windows']:
+                    if w['id'] == data.get('id'):
+                        w['x'] = data['x']
+                        w['y'] = data['y']
+                        break
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:moved', 'data': {'id': data['id'], 'x': data['x'], 'y': data['y']}}, sid)
 
-        elif type_ == 'window:resize':
-            for w in ws_state['windows']:
-                if w['id'] == data.get('id'):
-                    w['width'] = data['width']
-                    w['height'] = data['height']
-                    break
-            wm.update_workspace(ws_id, {'windows': ws_state['windows']})
-            _broadcast(ws_id, {'type': 'window:resized', 'data': {'id': data['id'], 'width': data['width'], 'height': data['height']}}, sid)
+            elif type_ == 'window:resize':
+                for w in ws_state['windows']:
+                    if w['id'] == data.get('id'):
+                        w['width'] = data['width']
+                        w['height'] = data['height']
+                        break
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:resized', 'data': {'id': data['id'], 'width': data['width'], 'height': data['height']}}, sid)
 
-        elif type_ == 'window:focus':
-            max_z = max((w['zIndex'] for w in ws_state['windows']), default=0)
-            for w in ws_state['windows']:
-                if w['id'] == data.get('id'):
-                    w['zIndex'] = max_z + 1
-                    break
-            wm.update_workspace(ws_id, {'windows': ws_state['windows']})
-            _broadcast(ws_id, {'type': 'window:focused', 'data': {'id': data['id']}}, sid)
+            elif type_ == 'window:focus':
+                max_z = max((w['zIndex'] for w in ws_state['windows']), default=0)
+                for w in ws_state['windows']:
+                    if w['id'] == data.get('id'):
+                        w['zIndex'] = max_z + 1
+                        break
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:focused', 'data': {'id': data['id']}}, sid)
 
-        elif type_ == 'window:minimize':
-            minimized = data.get('minimized', True)
-            for w in ws_state['windows']:
-                if w['id'] == data.get('id'):
-                    w['minimized'] = minimized
-                    break
-            wm.update_workspace(ws_id, {'windows': ws_state['windows']})
-            _broadcast(ws_id, {'type': 'window:minimized', 'data': {'id': data['id'], 'minimized': minimized}}, sid)
+            elif type_ == 'window:minimize':
+                minimized = data.get('minimized', True)
+                for w in ws_state['windows']:
+                    if w['id'] == data.get('id'):
+                        w['minimized'] = minimized
+                        break
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:minimized', 'data': {'id': data['id'], 'minimized': minimized}}, sid)
 
-        elif type_ == 'window:maximize':
-            maximized = data.get('maximized', True)
-            for w in ws_state['windows']:
-                if w['id'] == data.get('id'):
-                    w['maximized'] = maximized
-                    break
-            wm.update_workspace(ws_id, {'windows': ws_state['windows']})
-            _broadcast(ws_id, {'type': 'window:maximized', 'data': {'id': data['id'], 'maximized': maximized}}, sid)
+            elif type_ == 'window:maximize':
+                maximized = data.get('maximized', True)
+                for w in ws_state['windows']:
+                    if w['id'] == data.get('id'):
+                        w['maximized'] = maximized
+                        break
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:maximized', 'data': {'id': data['id'], 'maximized': maximized}}, sid)
 
-        elif type_ == 'window:close':
-            ws_state['windows'] = [w for w in ws_state['windows'] if w['id'] != data.get('id')]
-            wm.update_workspace(ws_id, {'windows': ws_state['windows']})
-            _broadcast(ws_id, {'type': 'window:removed', 'data': {'id': data['id']}}, sid)
+            elif type_ == 'window:close':
+                ws_state['windows'] = [w for w in ws_state['windows'] if w['id'] != data.get('id')]
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:removed', 'data': {'id': data['id']}}, sid)
 
-        elif type_ == 'window:open':
-            max_z = max((w['zIndex'] for w in ws_state['windows']), default=0)
-            new_window = {
-                "id": data.get('id', 'wnd_' + uuid.uuid4().hex[:8]),
-                "type": data.get('type', 'text'),
-                "title": data.get('title', 'New Window'),
-                "x": data.get('x', 100),
-                "y": data.get('y', 100),
-                "width": data.get('width', 600),
-                "height": data.get('height', 400),
-                "zIndex": max_z + 1,
-                "minimized": False,
-                "maximized": False,
-                "file": data.get('file', None),
-                "filePath": data.get('file', None),
-                "metadata": {},
-            }
-            ws_state['windows'].append(new_window)
-            wm.update_workspace(ws_id, {'windows': ws_state['windows']})
-            _broadcast(ws_id, {'type': 'window:added', 'data': new_window}, sid)
+            elif type_ == 'window:open':
+                max_z = max((w['zIndex'] for w in ws_state['windows']), default=0)
+                new_window = {
+                    "id": data.get('id', 'wnd_' + uuid.uuid4().hex[:8]),
+                    "type": data.get('type', 'text'),
+                    "title": data.get('title', 'New Window'),
+                    "x": data.get('x', 100),
+                    "y": data.get('y', 100),
+                    "width": data.get('width', 600),
+                    "height": data.get('height', 400),
+                    "zIndex": max_z + 1,
+                    "minimized": False,
+                    "maximized": False,
+                    "file": data.get('file', None),
+                    "filePath": data.get('file', None),
+                    "metadata": {},
+                }
+                ws_state['windows'].append(new_window)
+                wm.update_workspace(ws_id, {'windows': ws_state['windows']})
+                _broadcast(ws_id, {'type': 'window:added', 'data': new_window}, sid)
 
-        elif type_ == 'workspace:updateSettings':
-            settings = ws_state.get('settings', {})
-            settings.update(data)
-            wm.update_workspace(ws_id, {'settings': settings})
-            _broadcast(ws_id, {'type': 'workspace:updated', 'data': settings}, sid)
+            elif type_ == 'workspace:updateSettings':
+                settings = ws_state.get('settings', {})
+                settings.update(data)
+                wm.update_workspace(ws_id, {'settings': settings})
+                _broadcast(ws_id, {'type': 'workspace:updated', 'data': settings}, sid)
 
-    # Cleanup on disconnect
-    if sid in ws_connected:  # pragma: no cover
-        old_ws_id = ws_connected[sid][1]
-        if old_ws_id in ws_rooms:
-            ws_rooms[old_ws_id].discard(sid)
-        del ws_connected[sid]
+    finally:
+        # Cleanup on disconnect
+        if sid in ws_connected:
+            old_ws_id = ws_connected[sid][1]
+            if old_ws_id in ws_rooms:
+                ws_rooms[old_ws_id].discard(sid)
+            del ws_connected[sid]
 
 
 # --- Workspace API ---
@@ -253,6 +255,7 @@ def api_update_workspace(ws_id):
     ws = wm.update_workspace(ws_id, data)
     if not ws:
         return jsonify({'ok': False, 'error': 'Workspace not found'}), 404
+    _broadcast(ws_id, {'type': 'workspace:updated', 'data': ws})
     return jsonify({'ok': True, 'data': {'updatedAt': ws.get('updatedAt', ''), 'version': ws.get('version', 1)}})
 
 
@@ -301,7 +304,10 @@ def api_list_files(ws_id):
 @app.route('/api/workspaces/<ws_id>/files/<path:file_path>', methods=['GET'])
 def api_read_file(ws_id, file_path):
     force_text = request.args.get('type') == 'text'
-    result = fm.read_file(ws_id, file_path, force_text)
+    try:
+        result = fm.read_file(ws_id, file_path, force_text)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 422
     if not result:
         return jsonify({'ok': False, 'error': 'File not found'}), 404
     if result.get('binary'):
@@ -337,7 +343,10 @@ def api_upload(ws_id):
         return jsonify({'ok': False, 'error': 'No file provided'}), 400
     file = request.files['file']
     subdir = request.form.get('path', 'files')
-    result = fm.save_upload(ws_id, file.filename, file.read(), subdir)
+    try:
+        result = fm.save_upload(ws_id, file.filename, file.read(), subdir)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 422
     if _file_watching_enabled(ws_id):
         _broadcast(ws_id, {'type': 'file:changed', 'data': {'path': result['path'], 'action': 'write'}})
     return jsonify({'ok': True, 'data': result}), 201

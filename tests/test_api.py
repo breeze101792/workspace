@@ -1,6 +1,8 @@
 import json
 import io
 
+from backend import safe_fs
+
 
 def test_list_workspaces_empty(client):
     res = client.get('/api/workspaces')
@@ -123,6 +125,18 @@ def test_read_file_404(client):
     assert res.status_code == 404
 
 
+def test_read_file_invalid_utf8_returns_422(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    bad = safe_fs.workspace_path(ws_id) / 'text' / 'bad.txt'
+    bad.parent.mkdir(parents=True, exist_ok=True)
+    bad.write_bytes(b'\xff\xfe\x00')
+    res = client.get(f'/api/workspaces/{ws_id}/files/text/bad.txt')
+    assert res.status_code == 422
+    body = res.get_json()
+    assert body['ok'] is False
+    assert 'UTF-8' in body['error']
+
+
 def test_write_file_422_on_path_traversal(client):
     ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
     res = client.put(f'/api/workspaces/{ws_id}/files/../escape.txt', json={'content': 'x'})
@@ -143,6 +157,18 @@ def test_delete_file_404(client):
     assert res.status_code == 404
 
 
+def test_delete_nonempty_directory_returns_404_envelope(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    client.put(f'/api/workspaces/{ws_id}/files/markdown/sub/keep.md', json={'content': 'data'})
+    res = client.delete(f'/api/workspaces/{ws_id}/files/markdown/sub')
+    assert res.status_code == 404
+    body = res.get_json()
+    assert body['ok'] is False
+    # Contents untouched
+    kept = client.get(f'/api/workspaces/{ws_id}/files/markdown/sub/keep.md')
+    assert kept.status_code == 200
+
+
 def test_upload_file(client):
     ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
     data = {'file': (io.BytesIO(b'PNG_DATA'), 'test.png')}
@@ -161,6 +187,20 @@ def test_upload_no_file_400(client):
     ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
     res = client.post(f'/api/workspaces/{ws_id}/upload', data={})
     assert res.status_code == 400
+
+
+def test_upload_malicious_path_returns_422(client):
+    ws_id = client.post('/api/workspaces', json={'name': 'X'}).get_json()['data']['id']
+    data = {'file': (io.BytesIO(b'data'), 'evil.txt'), 'path': '../../escape'}
+    res = client.post(
+        f'/api/workspaces/{ws_id}/upload',
+        data=data,
+        content_type='multipart/form-data',
+    )
+    assert res.status_code == 422
+    body = res.get_json()
+    assert body['ok'] is False
+    assert body['error'] == 'Invalid path'
 
 
 def test_404_error_envelope(client):
