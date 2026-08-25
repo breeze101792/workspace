@@ -1,6 +1,8 @@
 import * as api from './api.js';
 import { connect, send, disconnect } from './ws.js';
 import { on, emit } from './state.js';
+import { showToast } from './toast.js';
+import { initWorkspaceManager, openWorkspaceManager } from './manager.js';
 import { initCanvas, getViewport, setViewport } from './canvas.js';
 import { initTouch } from './touch.js';
 import {
@@ -12,17 +14,6 @@ import { startTitleRename } from './titlebar.js';
 import { pushSnapshot, undo as histUndo, redo as histRedo } from './history.js';
 
 let currentWsId = null;
-
-// --- Toast ---
-
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const el = document.createElement('div');
-  el.className = 'toast toast-' + type;
-  el.textContent = message;
-  container.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 5000);
-}
 
 // --- Welcome state ---
 
@@ -135,6 +126,20 @@ function renderDock() {
 function setupUI() {
   // New workspace button
   document.getElementById('btn-new-ws').addEventListener('click', showCreateWorkspace);
+
+  // Workspace manager button
+  const manageBtn = document.getElementById('btn-manage-ws');
+  if (manageBtn) {
+    manageBtn.addEventListener('click', openWorkspaceManager);
+    initWorkspaceManager({
+      getActiveId: () => currentWsId,
+      onSwitch: (id) => switchToWorkspace(id),
+      onChanged: (list) => renderWorkspaceList(list),
+      onAfterDelete: (deletedId) => {
+        if (deletedId === currentWsId) loadWorkspace();
+      },
+    });
+  }
 
   // New window button
   document.getElementById('btn-new-window').addEventListener('click', () => {

@@ -54,19 +54,26 @@ def _broadcast(room, msg, exclude_sid=None):
 
 # --- Static frontend ---
 
+def _serve_static(path):
+    """Serve static files with revalidation so UI updates land immediately."""
+    resp = send_file(path)
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+
 @app.route('/')
 def index():
-    return send_file(str(FRONTEND_DIR / 'index.html'))
+    return _serve_static(str(FRONTEND_DIR / 'index.html'))
 
 
 @app.route('/js/<path:path>')
 def serve_js(path):
-    return send_file(str(FRONTEND_DIR / 'js' / path))
+    return _serve_static(str(FRONTEND_DIR / 'js' / path))
 
 
 @app.route('/css/<path:path>')
 def serve_css(path):
-    return send_file(str(FRONTEND_DIR / 'css' / path))
+    return _serve_static(str(FRONTEND_DIR / 'css' / path))
 
 
 # --- WebSocket ---
